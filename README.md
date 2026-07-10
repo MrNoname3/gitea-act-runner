@@ -168,6 +168,7 @@ hosted on Gitea and push-mirrored to GitHub while CI runs on either side.
 | `scripts/*.sh` | ✅ | setup / uninstall / status / logs (`--help` on the first two). |
 | `.github/workflows/lint.yml`, `.yamllint` | ✅ | Lint CI + its config. |
 | `LICENSE`, `SECURITY.md` | ✅ | MIT license, secret-handling policy. |
+| `gitea-act-runner.code-workspace` | ✅ | Portable VS Code workspace — open it after cloning. |
 | `runner.env` | ❌ gitignored | **Registration token — secret.** |
 | `data/.runner` | ❌ gitignored | **Runner identity — secret.** |
 

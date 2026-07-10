@@ -1,0 +1,34 @@
+{
+  // Portable VS Code workspace. Clone the repo anywhere and open this file
+  // ("File > Open Workspace from File…") — everything below uses relative paths,
+  // so it just works, with no machine-specific settings baked in.
+  "folders": [
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    // The quadlet unit is INI-like; the env template is KEY=value.
+    "files.associations": {
+      "*.container": "ini",
+      "runner.env*": "properties"
+    },
+    // Shell scripts here use 2-space indentation.
+    "[shellscript]": {
+      "editor.tabSize": 2,
+      "editor.insertSpaces": true
+    },
+    "editor.rulers": [100],
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true
+  },
+  "extensions": {
+    // offered on open so a fresh machine gets the same linting the CI enforces:
+    // shellcheck for scripts, YAML for config/workflows, GitHub Actions support.
+    "recommendations": [
+      "timonwong.shellcheck",
+      "redhat.vscode-yaml",
+      "github.vscode-github-actions"
+    ]
+  }
+}
