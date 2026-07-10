@@ -1,0 +1,30 @@
+name: lint
+
+# Runs on both GitHub Actions and Gitea Actions. Gitea also scans
+# .github/workflows, and this job uses no actions/cache and no github-only
+# guard, so it runs cleanly on either platform (see README "Compatibility").
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install linters
+        # Portable whether the runner runs as root (Gitea/act) or as a sudo-capable
+        # user (GitHub-hosted). shellcheck and yamllint are in the Ubuntu repos.
+        run: |
+          if [ "$(id -u)" -ne 0 ]; then SUDO=sudo; else SUDO=""; fi
+          $SUDO apt-get update -qq
+          $SUDO apt-get install -y --no-install-recommends shellcheck yamllint
+
+      - name: shellcheck (scripts)
+        run: shellcheck scripts/*.sh
+
+      - name: yamllint (config + workflows)
+        run: yamllint config.yaml .github/workflows/

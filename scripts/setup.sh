@@ -12,6 +12,30 @@
 #
 set -euo pipefail
 
+usage() {
+  cat <<'EOF'
+Usage: scripts/setup.sh [--dry-run] [-h|--help]
+
+Install and start the Gitea Actions runner as a rootless podman container
+managed by a systemd user quadlet. Reads runner.env (copy it from
+runner.env.example and fill in the registration token first).
+
+Options:
+  --dry-run   Show what would be done, without changing anything.
+  -h, --help  Show this help and exit.
+EOF
+}
+
+DRY=0
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -h|--help) usage; exit 0 ;;
+    --dry-run) DRY=1 ;;
+    *) printf 'Unknown argument: %s\n\n' "$1" >&2; usage >&2; exit 2 ;;
+  esac
+  shift
+done
+
 # Repo root = this script's parent directory (resolve symlinks with -P).
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd -P)"
@@ -27,6 +51,9 @@ DATA_DIR="$REPO_DIR/data"
 say()  { printf '\033[1;32m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m!!\033[0m  %s\n' "$*" >&2; }
 die()  { printf '\033[1;31mERROR:\033[0m %s\n' "$*" >&2; exit 1; }
+run()  { if [ "$DRY" -eq 1 ]; then printf '\033[1;36m[dry-run]\033[0m %s\n' "$*"; else "$@"; fi; }
+
+if [ "$DRY" -eq 1 ]; then say "Dry run — no changes will be made."; fi
 
 # 1) Preflight ---------------------------------------------------------------
 [ "$(id -u)" -ne 0 ] || die "Do not run as root — this is a rootless, user-scope setup."
@@ -35,12 +62,10 @@ command -v systemctl >/dev/null 2>&1 || die "'systemctl' not found (user systemd
 [ -f "$QUADLET_SRC" ] || die "Quadlet template missing: $QUADLET_SRC"
 
 # 2) runner.env --------------------------------------------------------------
-if [ ! -f "$ENV_FILE" ]; then
-  die "runner.env is missing. Create it:  cp runner.env.example runner.env  then edit it."
-fi
+[ -f "$ENV_FILE" ] || die "runner.env is missing. Create it:  cp runner.env.example runner.env  then edit it."
 
 # 3) Data dir (holds the .runner registration state) -------------------------
-mkdir -p "$DATA_DIR"
+run mkdir -p "$DATA_DIR"
 
 # 4) Token check — only required for the FIRST registration ------------------
 if [ ! -f "$DATA_DIR/.runner" ]; then
@@ -56,26 +81,34 @@ fi
 # 5) Lingering (run without an active login; start on boot) ------------------
 if [ "$(loginctl show-user "$USER" --property=Linger --value 2>/dev/null || echo no)" != "yes" ]; then
   say "Enabling lingering for '$USER'…"
-  loginctl enable-linger "$USER" 2>/dev/null \
+  run loginctl enable-linger "$USER" \
     || warn "Could not enable lingering. Run manually: sudo loginctl enable-linger $USER"
 fi
 
 # 6) Podman user socket (the runner starts job containers via %t/podman/podman.sock)
-systemctl --user enable --now podman.socket >/dev/null 2>&1 \
+run systemctl --user enable --now podman.socket \
   || warn "Could not enable podman.socket — check: systemctl --user status podman.socket"
 
 # 7) Render + install the quadlet -------------------------------------------
 say "Installing quadlet -> $QUADLET_DST"
-mkdir -p "$QUADLET_DST_DIR"
-sed "s#__CI_RUNNER_DIR__#${REPO_DIR}#g" "$QUADLET_SRC" > "$QUADLET_DST"
+if [ "$DRY" -eq 1 ]; then
+  printf '\033[1;36m[dry-run]\033[0m render %s (__CI_RUNNER_DIR__=%s) -> %s\n' "$QUADLET_SRC" "$REPO_DIR" "$QUADLET_DST"
+else
+  mkdir -p "$QUADLET_DST_DIR"
+  sed "s#__CI_RUNNER_DIR__#${REPO_DIR}#g" "$QUADLET_SRC" > "$QUADLET_DST"
+fi
 
 # 8) Reload systemd + (re)start ---------------------------------------------
-say "systemctl --user daemon-reload"
-systemctl --user daemon-reload
+run systemctl --user daemon-reload
 say "Starting $SERVICE"
-systemctl --user restart "$SERVICE"
+run systemctl --user restart "$SERVICE"
 
 # 9) Verify ------------------------------------------------------------------
+if [ "$DRY" -eq 1 ]; then
+  say "Dry run complete. Re-run without --dry-run to apply."
+  exit 0
+fi
+
 sleep 5
 if systemctl --user is-active --quiet "$SERVICE"; then
   say "$SERVICE is active."
