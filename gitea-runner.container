@@ -10,7 +10,9 @@ Wants=network-online.target
 After=network-online.target podman.socket
 
 [Container]
-Image=docker.io/gitea/act_runner:latest
+# Pinned to a version (not :latest) so Renovate can propose updates via a PR;
+# apply a bump with `git pull && ./scripts/setup.sh`. See renovate.json.
+Image=docker.io/gitea/act_runner:0.6.1
 ContainerName=gitea-runner
 EnvironmentFile=__CI_RUNNER_DIR__/runner.env
 Volume=__CI_RUNNER_DIR__/config.yaml:/config.yaml:ro

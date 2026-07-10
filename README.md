@@ -104,8 +104,7 @@ container:
 ./scripts/status.sh          # service + container status
 ./scripts/logs.sh            # follow logs (optional arg: tail line count)
 systemctl --user restart gitea-runner.service
-podman pull docker.io/gitea/act_runner:latest && \
-  systemctl --user restart gitea-runner.service   # update the runner image
+git pull && ./scripts/setup.sh   # apply a runner-version bump (Renovate PR) + restart
 ./scripts/uninstall.sh       # stop + remove (keeps data/.runner)
 ./scripts/uninstall.sh --purge   # also delete the registration
 ```
@@ -167,6 +166,7 @@ hosted on Gitea and push-mirrored to GitHub while CI runs on either side.
 | `runner.env.example` | ✅ | Template for `runner.env`. |
 | `scripts/*.sh` | ✅ | setup / uninstall / status / logs (`--help` on the first two). |
 | `.github/workflows/lint.yml`, `.yamllint` | ✅ | Lint CI + its config. |
+| `renovate.json` | ✅ | Renovate config; tracks the pinned `act_runner` image version. |
 | `LICENSE`, `SECURITY.md` | ✅ | MIT license, secret-handling policy. |
 | `gitea-act-runner.code-workspace` | ✅ | Portable VS Code workspace — open it after cloning. |
 | `runner.env` | ❌ gitignored | **Registration token — secret.** |

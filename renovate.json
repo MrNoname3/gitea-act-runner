@@ -1,0 +1,14 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Track the gitea/act_runner image version pinned in the quadlet",
+      "fileMatch": ["^gitea-runner\\.container$"],
+      "matchStrings": ["Image=docker\\.io/gitea/act_runner:(?<currentValue>\\S+)"],
+      "datasourceTemplate": "docker",
+      "depNameTemplate": "docker.io/gitea/act_runner"
+    }
+  ]
+}
