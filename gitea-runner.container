@@ -1,0 +1,33 @@
+# Podman Quadlet unit for the Gitea Actions runner.
+#
+# NOTE: __CI_RUNNER_DIR__ is a placeholder. Do NOT copy this file directly into
+# ~/.config/containers/systemd/. Run `scripts/setup.sh`, which substitutes the
+# repo's absolute path and installs the processed unit. See README.md.
+
+[Unit]
+Description=Gitea Actions runner (act_runner)
+Wants=network-online.target
+After=network-online.target podman.socket
+
+[Container]
+Image=docker.io/gitea/act_runner:latest
+ContainerName=gitea-runner
+EnvironmentFile=__CI_RUNNER_DIR__/runner.env
+Volume=__CI_RUNNER_DIR__/config.yaml:/config.yaml:ro
+Volume=__CI_RUNNER_DIR__/data:/data
+# Give the runner the host's rootless podman socket so it can start job
+# containers. %t = XDG_RUNTIME_DIR (portable across machines/users).
+Volume=%t/podman/podman.sock:/var/run/docker.sock
+# Needed on SELinux systems so the container may access the mounted socket.
+# Harmless on non-SELinux hosts.
+SecurityLabelDisable=true
+# Opt in to `podman auto-update` (only acts if you enable podman-auto-update.timer).
+AutoUpdate=registry
+
+[Service]
+Restart=on-failure
+RestartSec=10
+
+[Install]
+# With lingering enabled, default.target is reached at boot -> starts on boot.
+WantedBy=default.target

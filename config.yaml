@@ -1,0 +1,26 @@
+log:
+  level: info
+
+runner:
+  # The .runner registration state persists in the /data volume.
+  file: .runner
+  capacity: 1
+  timeout: 3h
+  labels:
+    # label -> image. The label (left of the first colon) MUST match the
+    # workflow's `runs-on:`. The image MUST be a full environment (gcc,
+    # python, etc.), NOT a slim node image, or native builds fail.
+    - "ubuntu-latest:docker://ghcr.io/catthehacker/ubuntu:act-latest"
+
+cache:
+  enabled: true
+
+container:
+  network: ""
+  privileged: false
+  valid_volumes: []
+  # "-": auto-detect the docker/podman host, but do NOT bind-mount the socket
+  # into job containers. Without this, rootless podman tries to
+  # `mkdir /var/run/docker.sock` on the host -> "permission denied" and every
+  # job fails before its container starts.
+  docker_host: "-"

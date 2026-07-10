@@ -1,0 +1,14 @@
+# --- Secrets — must NEVER be committed ---
+
+# Registration token + instance settings. Copy runner.env.example -> runner.env.
+runner.env
+
+# Runner identity created after registration (contains a secret UUID that
+# authenticates this runner to Gitea). Machine-specific; keep the dir, drop
+# its contents.
+/data/*
+!/data/.gitkeep
+
+# --- Local / tooling junk ---
+.claude/
+*.log

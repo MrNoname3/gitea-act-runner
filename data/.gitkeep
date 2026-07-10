@@ -1,0 +1,2 @@
+# Keeps the data/ directory in git. The runner writes its .runner state file
+# here at registration time; that file is gitignored (it holds a secret).
