@@ -1,4 +1,4 @@
-# gitea-runner-quadlet
+# gitea-act-runner
 
 Run a **Gitea / Forgejo Actions runner** as a rootless **Podman** container,
 managed by a **systemd** user *quadlet* so it survives reboots and starts on its
@@ -45,8 +45,8 @@ and similar. A slim `node:*` image is **not** enough.
 ## Quick start
 
 ```bash
-git clone <this-repo> gitea-runner-quadlet
-cd gitea-runner-quadlet
+git clone <this-repo> gitea-act-runner
+cd gitea-act-runner
 
 # 1. Provide the registration token and instance settings.
 cp runner.env.example runner.env
