@@ -3,6 +3,21 @@
   "extends": ["config:recommended"],
   "dependencyDashboard": true,
   "labels": ["dependencies"],
+  "packageRules": [
+    {
+      "description": "Conservative automerge: patch/pin/digest across managers, after a 3-day soak",
+      "matchUpdateTypes": ["patch", "pin", "digest"],
+      "automerge": true,
+      "minimumReleaseAge": "3 days"
+    },
+    {
+      "description": "Also automerge GitHub Actions minor updates (same 3-day soak)",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["minor"],
+      "automerge": true,
+      "minimumReleaseAge": "3 days"
+    }
+  ],
   "customManagers": [
     {
       "customType": "regex",

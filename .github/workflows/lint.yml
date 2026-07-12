@@ -12,6 +12,7 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 10   # a hung step (e.g. a stalled apt/download) fails fast instead of idling
     steps:
       - uses: actions/checkout@v7
 
