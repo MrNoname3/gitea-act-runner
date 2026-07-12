@@ -21,8 +21,8 @@ machine is back and the runner reconnects.
 | Piece | Role |
 |-------|------|
 | `gitea/act_runner` container | Registers with the server, polls for jobs, launches a job container per job. |
-| `config.yaml` | Runner config. The key line is the **label → image** mapping. |
-| `runner.env` | Registration inputs (instance URL, token, name). **Secret — gitignored.** |
+| `config.yaml.template` → `config.yaml` | Runner config. The template is committed; `setup.sh` renders the (gitignored) `config.yaml` from it, filling in the label→image mapping and the **per-machine resource limits**. |
+| `runner.env` | Registration inputs (instance URL, token, name) **and per-machine resource limits**. **Secret — gitignored.** |
 | `data/.runner` | Registration state written after first start. **Secret — gitignored.** |
 | `gitea-runner.container` | Quadlet unit template; `scripts/setup.sh` installs it. |
 | systemd user service + lingering | Auto-start on boot, restart on failure, no login needed. |
@@ -80,11 +80,18 @@ exist). After registration it is no longer needed.
 
 ## `config.yaml` — the important bits
 
+`config.yaml` is **generated** — `setup.sh` renders it from
+`config.yaml.template` and the per-machine `CI_*` values in `runner.env`, then
+the quadlet mounts it read-only. Edit the **template** (portable, committed) or
+**runner.env** (per-machine, gitignored) — never the generated file.
+
 ```yaml
 runner:
+  capacity: 1              # from CI_RUNNER_CAPACITY (rendered)
   labels:
     - "ubuntu-latest:docker://ghcr.io/catthehacker/ubuntu:act-latest"
 container:
+  options: "--memory=2g --cpus=1.5"   # from CI_JOB_MEMORY / CI_JOB_CPUS (rendered)
   docker_host: "-"
 ```
 
@@ -94,7 +101,48 @@ container:
 - **`docker_host: "-"`** — auto-detect the container host but do **not** bind-mount
   the socket into job containers. Without it, rootless Podman tries to create the
   socket mountpoint on the host and every job fails with *permission denied*.
-- `capacity: 1` — one job at a time (fine for a single machine).
+
+### Per-machine resource limits
+
+The machine-specific knobs live in **`runner.env`** (gitignored), so the same repo
+can drive a weak laptop and a beefy desktop with different caps. Set them, then
+`./scripts/setup.sh` to re-render and restart:
+
+| `runner.env` variable | Maps to | Meaning | Empty ⇒ |
+|---|---|---|---|
+| `CI_RUNNER_CAPACITY` | `runner.capacity` | how many jobs run **at once** | defaults to `1` |
+| `CI_JOB_MEMORY` | `--memory` on each job container | max RAM per job (e.g. `2g`, `512m`) | no memory cap |
+| `CI_JOB_CPUS` | `--cpus` on each job container | max CPUs per job (`1.5` = 150 %) | no CPU cap |
+
+Suggested profiles:
+
+```ini
+# small / old laptop
+CI_JOB_MEMORY=2g   CI_JOB_CPUS=1.5   CI_RUNNER_CAPACITY=1
+# desktop
+CI_JOB_MEMORY=4g   CI_JOB_CPUS=3     CI_RUNNER_CAPACITY=2
+```
+
+> **Why not limit the runner container instead?** Job containers are started via
+> the host Podman socket, so they are **siblings** of the `act_runner` container,
+> not children. A `MemoryMax=`/`CPUQuota=` on the quadlet would only throttle the
+> lightweight orchestrator, not the jobs. The per-job `--memory`/`--cpus` above is
+> what actually caps a build.
+
+> **Rootless caveat (cgroup v2 delegation).** For `--cpus`/`--memory` to take
+> effect rootless, the controllers must be delegated to your user slice. Memory is
+> usually delegated by default; the **CPU** controller often is not. Check with
+> `cat /sys/fs/cgroup/user.slice/user-$(id -u).slice/cgroup.controllers` — if
+> `cpu` is missing, add a drop-in and reboot:
+>
+> ```ini
+> # /etc/systemd/system/user@.service.d/delegate.conf   (needs root)
+> [Service]
+> Delegate=cpu cpuset io memory pids
+> ```
+>
+> Without delegation the flags are silently ignored (podman may warn), so limits
+> won't apply — but jobs still run.
 
 ---
 
@@ -161,7 +209,8 @@ hosted on Gitea and push-mirrored to GitHub while CI runs on either side.
 
 | File | Committed? | Notes |
 |------|-----------|-------|
-| `config.yaml` | ✅ | Runner config (no secrets). |
+| `config.yaml.template` | ✅ | Portable runner config with `__CI_*__` placeholders. |
+| `config.yaml` | ❌ generated | Rendered per-machine by `setup.sh`; gitignored. |
 | `gitea-runner.container` | ✅ | Quadlet template (path is a placeholder). |
 | `runner.env.example` | ✅ | Template for `runner.env`. |
 | `scripts/*.sh` | ✅ | setup / uninstall / status / logs (`--help` on the first two). |
@@ -169,7 +218,7 @@ hosted on Gitea and push-mirrored to GitHub while CI runs on either side.
 | `renovate.json` | ✅ | Renovate config; tracks the pinned `act_runner` image version. |
 | `LICENSE`, `SECURITY.md` | ✅ | MIT license, secret-handling policy. |
 | `gitea-act-runner.code-workspace` | ✅ | Portable VS Code workspace — open it after cloning. |
-| `runner.env` | ❌ gitignored | **Registration token — secret.** |
+| `runner.env` | ❌ gitignored | **Registration token — secret.** Also holds the per-machine `CI_*` resource limits. |
 | `data/.runner` | ❌ gitignored | **Runner identity — secret.** |
 
 ---

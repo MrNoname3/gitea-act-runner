@@ -4,7 +4,11 @@ log:
 runner:
   # The .runner registration state persists in the /data volume.
   file: .runner
-  capacity: 1
+  # capacity + container.options below are rendered per-machine by
+  # scripts/setup.sh from the CI_* values in runner.env. Do NOT edit the
+  # generated config.yaml by hand — it is gitignored and overwritten on setup;
+  # edit this template (config.yaml.template) or runner.env instead.
+  capacity: __CI_RUNNER_CAPACITY__
   timeout: 3h
   labels:
     # label -> image. The label (left of the first colon) MUST match the
@@ -18,6 +22,12 @@ cache:
 container:
   network: ""
   privileged: false
+  # Per-job resource limits (memory / CPU) rendered from runner.env. Empty
+  # string = no limit. These flags are passed to `podman create` for every job
+  # container. Job containers are started via the host podman socket, so they
+  # are SIBLINGS of the runner container — limiting the runner's own cgroup
+  # would NOT cap them; this is the knob that does.
+  options: "__CI_CONTAINER_OPTIONS__"
   valid_volumes: []
   # "-": auto-detect the docker/podman host, but do NOT bind-mount the socket
   # into job containers. Without this, rootless podman tries to

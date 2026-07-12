@@ -9,6 +9,13 @@ runner.env
 /data/*
 !/data/.gitkeep
 
+# --- Machine-specific, generated — not secret but not portable ---
+
+# Rendered by scripts/setup.sh from config.yaml.template + the CI_* resource
+# limits in runner.env. Per-machine (RAM/CPU/capacity differ), so it is not
+# committed. Edit config.yaml.template or runner.env, then re-run setup.sh.
+/config.yaml
+
 # --- Local / tooling junk ---
 .claude/
 *.log

@@ -47,6 +47,15 @@ QUADLET_DST_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/containers/systemd"
 QUADLET_DST="$QUADLET_DST_DIR/$UNIT_NAME"
 ENV_FILE="$REPO_DIR/runner.env"
 DATA_DIR="$REPO_DIR/data"
+CONFIG_TEMPLATE="$REPO_DIR/config.yaml.template"
+CONFIG_DST="$REPO_DIR/config.yaml"
+
+# Read a KEY=VALUE from runner.env (first match), stripped of surrounding
+# whitespace/quotes. Empty if unset. Mirrors the token-extraction style below.
+read_env() {
+  grep -E "^$1=" "$ENV_FILE" 2>/dev/null | head -1 | cut -d= -f2- \
+    | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'\$/\1/"
+}
 
 say()  { printf '\033[1;32m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m!!\033[0m  %s\n' "$*" >&2; }
@@ -60,6 +69,7 @@ if [ "$DRY" -eq 1 ]; then say "Dry run — no changes will be made."; fi
 command -v podman    >/dev/null 2>&1 || die "'podman' not found in PATH."
 command -v systemctl >/dev/null 2>&1 || die "'systemctl' not found (user systemd is required)."
 [ -f "$QUADLET_SRC" ] || die "Quadlet template missing: $QUADLET_SRC"
+[ -f "$CONFIG_TEMPLATE" ] || die "Config template missing: $CONFIG_TEMPLATE"
 
 # 2) runner.env --------------------------------------------------------------
 [ -f "$ENV_FILE" ] || die "runner.env is missing. Create it:  cp runner.env.example runner.env  then edit it."
@@ -89,7 +99,32 @@ fi
 run systemctl --user enable --now podman.socket \
   || warn "Could not enable podman.socket — check: systemctl --user status podman.socket"
 
-# 7) Render + install the quadlet -------------------------------------------
+# 7) Render config.yaml from the template + per-machine resource limits ------
+CAP="$(read_env CI_RUNNER_CAPACITY)"; CAP="${CAP:-1}"
+MEM="$(read_env CI_JOB_MEMORY)"
+CPUS="$(read_env CI_JOB_CPUS)"
+
+case "$CAP" in
+  ''|*[!0-9]*) die "CI_RUNNER_CAPACITY must be a positive integer, got: '$CAP'" ;;
+esac
+[ "$CAP" -ge 1 ] || die "CI_RUNNER_CAPACITY must be >= 1, got: '$CAP'"
+
+# Empty value => omit that flag (no limit for that dimension).
+OPTS=""
+[ -n "$MEM" ]  && OPTS="$OPTS --memory=$MEM"
+[ -n "$CPUS" ] && OPTS="$OPTS --cpus=$CPUS"
+OPTS="${OPTS# }"  # trim the single leading space
+
+say "Rendering config.yaml (capacity=$CAP, options='${OPTS:-none}')"
+if [ "$DRY" -eq 1 ]; then
+  printf '\033[1;36m[dry-run]\033[0m render %s -> %s\n' "$CONFIG_TEMPLATE" "$CONFIG_DST"
+else
+  sed -e "s#__CI_RUNNER_CAPACITY__#${CAP}#g" \
+      -e "s#__CI_CONTAINER_OPTIONS__#${OPTS}#g" \
+      "$CONFIG_TEMPLATE" > "$CONFIG_DST"
+fi
+
+# 8) Render + install the quadlet -------------------------------------------
 say "Installing quadlet -> $QUADLET_DST"
 if [ "$DRY" -eq 1 ]; then
   printf '\033[1;36m[dry-run]\033[0m render %s (__CI_RUNNER_DIR__=%s) -> %s\n' "$QUADLET_SRC" "$REPO_DIR" "$QUADLET_DST"
@@ -98,12 +133,12 @@ else
   sed "s#__CI_RUNNER_DIR__#${REPO_DIR}#g" "$QUADLET_SRC" > "$QUADLET_DST"
 fi
 
-# 8) Reload systemd + (re)start ---------------------------------------------
+# 9) Reload systemd + (re)start ---------------------------------------------
 run systemctl --user daemon-reload
 say "Starting $SERVICE"
 run systemctl --user restart "$SERVICE"
 
-# 9) Verify ------------------------------------------------------------------
+# 10) Verify -----------------------------------------------------------------
 if [ "$DRY" -eq 1 ]; then
   say "Dry run complete. Re-run without --dry-run to apply."
   exit 0
