@@ -123,6 +123,15 @@ CI_JOB_MEMORY=2g   CI_JOB_CPUS=1.5   CI_RUNNER_CAPACITY=1
 CI_JOB_MEMORY=4g   CI_JOB_CPUS=3     CI_RUNNER_CAPACITY=2
 ```
 
+> **Ceilings, not reservations — and they stack with capacity.** Each cap applies
+> **per job container**: a job may use *up to* that much, nothing is pre-allocated
+> (unlike a VM), and an idle job leaves the RAM/CPU free for the host. The real peak
+> the host must absorb is therefore `CI_RUNNER_CAPACITY × per-job cap` when every slot
+> is busy — e.g. capacity `2` × `--memory=4g` = an **8g** ceiling. Keep that product
+> comfortably under the machine's RAM/cores. Note the asymmetry: exceeding `--memory`
+> **OOM-kills** the job (hard limit), while "exceeding" `--cpus` just **throttles** it
+> (soft limit) — so a too-low CPU cap slows builds, a too-low memory cap fails them.
+
 > **Why not limit the runner container instead?** Job containers are started via
 > the host Podman socket, so they are **siblings** of the `act_runner` container,
 > not children. A `MemoryMax=`/`CPUQuota=` on the quadlet would only throttle the
@@ -141,8 +150,9 @@ CI_JOB_MEMORY=4g   CI_JOB_CPUS=3     CI_RUNNER_CAPACITY=2
 > Delegate=cpu cpuset io memory pids
 > ```
 >
-> Without delegation the flags are silently ignored (podman may warn), so limits
-> won't apply — but jobs still run.
+> Without delegation the flags are silently ignored, so limits won't apply — but
+> jobs still run. As a safety net, `setup.sh` prints a warning when `CI_JOB_CPUS` is
+> set but the `cpu` controller isn't delegated, so this doesn't fail silently.
 
 ---
 

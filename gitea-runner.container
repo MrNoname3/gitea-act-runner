@@ -11,7 +11,10 @@ After=network-online.target podman.socket
 
 [Container]
 # Pinned to a version (not :latest) so Renovate can propose updates via a PR;
-# apply a bump with `git pull && ./scripts/setup.sh`. See renovate.json.
+# apply a bump with `git pull && ./scripts/setup.sh`. This PR flow is the single
+# update path — we deliberately do NOT set `AutoUpdate=registry`, which would fight
+# the pin and the Renovate-controlled flow (and silently move the runner version
+# out from under the committed config). See renovate.json.
 Image=docker.io/gitea/act_runner:0.6.1
 ContainerName=gitea-runner
 EnvironmentFile=__CI_RUNNER_DIR__/runner.env
@@ -23,8 +26,6 @@ Volume=%t/podman/podman.sock:/var/run/docker.sock
 # Needed on SELinux systems so the container may access the mounted socket.
 # Harmless on non-SELinux hosts.
 SecurityLabelDisable=true
-# Opt in to `podman auto-update` (only acts if you enable podman-auto-update.timer).
-AutoUpdate=registry
 
 [Service]
 Restart=on-failure

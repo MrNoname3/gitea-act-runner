@@ -30,3 +30,17 @@ jobs:
       - name: yamllint (config + workflows)
         # config.yaml is generated (gitignored); lint the committed template.
         run: yamllint config.yaml.template .github/workflows/
+
+      - name: yamllint (rendered config)
+        # The step above only lints the placeholder form. Also render the template
+        # the way setup.sh does and lint the OUTPUT, so a template edit that yields
+        # invalid YAML after substitution is caught. Cover both the with-limits and
+        # the no-limits (options: "") cases.
+        run: |
+          for opts in "--memory=4g --cpus=3" ""; do
+            sed -e 's#__CI_RUNNER_CAPACITY__#2#g' \
+                -e "s#__CI_CONTAINER_OPTIONS__#${opts}#g" \
+                config.yaml.template > config.rendered.yaml
+            yamllint config.rendered.yaml
+          done
+          rm -f config.rendered.yaml

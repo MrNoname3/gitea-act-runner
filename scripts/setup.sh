@@ -115,6 +115,21 @@ OPTS=""
 [ -n "$CPUS" ] && OPTS="$OPTS --cpus=$CPUS"
 OPTS="${OPTS# }"  # trim the single leading space
 
+# Preflight: if a CPU cap is requested, warn when the cgroup v2 'cpu' controller
+# is NOT delegated to this user — rootless podman then silently IGNORES --cpus, so
+# the limit looks set but does nothing (jobs still run, just uncapped on CPU).
+# Memory is usually delegated out of the box; CPU often is not. Best-effort: only
+# warn when we can positively read the controllers and see 'cpu' missing, so odd
+# cgroup layouts don't produce false alarms. See README "Rootless caveat".
+if [ -n "$CPUS" ]; then
+  CTRL_FILE="/sys/fs/cgroup/user.slice/user-$(id -u).slice/cgroup.controllers"
+  if [ -r "$CTRL_FILE" ] && ! grep -qw cpu "$CTRL_FILE"; then
+    warn "CI_JOB_CPUS=$CPUS is set, but the cgroup v2 'cpu' controller is not delegated to your user."
+    warn "  -> --cpus=$CPUS will be silently ignored (memory limits still apply; jobs run uncapped on CPU)."
+    warn "  -> Fix: add a Delegate= drop-in and reboot — see README, 'Rootless caveat (cgroup v2 delegation)'."
+  fi
+fi
+
 say "Rendering config.yaml (capacity=$CAP, options='${OPTS:-none}')"
 if [ "$DRY" -eq 1 ]; then
   printf '\033[1;36m[dry-run]\033[0m render %s -> %s\n' "$CONFIG_TEMPLATE" "$CONFIG_DST"
