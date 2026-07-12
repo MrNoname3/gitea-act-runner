@@ -27,4 +27,5 @@ jobs:
         run: shellcheck scripts/*.sh
 
       - name: yamllint (config + workflows)
-        run: yamllint config.yaml .github/workflows/
+        # config.yaml is generated (gitignored); lint the committed template.
+        run: yamllint config.yaml.template .github/workflows/
