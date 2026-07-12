@@ -1,0 +1,13 @@
+{
+  // Applied when opening this folder directly ("Open Folder"). Mirrors
+  // gitea-act-runner.code-workspace (used for "Open Workspace from File") so both
+  // entry points behave the same. Whitespace/indent rules live in .editorconfig
+  // (editor-agnostic) and are applied by the recommended EditorConfig extension;
+  // only VS-Code-specific bits that .editorconfig cannot express are set here.
+  "files.associations": {
+    // The quadlet unit is INI-like; the env file/template is KEY=value.
+    "*.container": "ini",
+    "runner.env*": "properties"
+  },
+  "editor.rulers": [100]
+}

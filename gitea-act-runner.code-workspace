@@ -24,8 +24,10 @@
   },
   "extensions": {
     // offered on open so a fresh machine gets the same linting the CI enforces:
-    // shellcheck for scripts, YAML for config/workflows, GitHub Actions support.
+    // EditorConfig applies .editorconfig, shellcheck for scripts, YAML for
+    // config/workflows, GitHub Actions support.
     "recommendations": [
+      "editorconfig.editorconfig",
       "timonwong.shellcheck",
       "redhat.vscode-yaml",
       "github.vscode-github-actions"

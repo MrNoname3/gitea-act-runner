@@ -1,0 +1,11 @@
+{
+  // Offered on open so a fresh machine gets the same linting the CI enforces:
+  // EditorConfig applies .editorconfig, shellcheck lints scripts, YAML + GitHub
+  // Actions cover config.yaml.template and the workflows.
+  "recommendations": [
+    "editorconfig.editorconfig",
+    "timonwong.shellcheck",
+    "redhat.vscode-yaml",
+    "github.vscode-github-actions"
+  ]
+}
