@@ -225,7 +225,7 @@ hosted on Gitea and push-mirrored to GitHub while CI runs on either side.
 | `runner.env.example` | ✅ | Template for `runner.env`. |
 | `scripts/*.sh` | ✅ | setup / uninstall / status / logs (`--help` on the first two). |
 | `.github/workflows/lint.yml`, `.yamllint` | ✅ | Lint CI + its config. |
-| `renovate.json` | ✅ | Renovate config; tracks the pinned `act_runner` image version. |
+| `renovate.json` | ✅ | Renovate config. No custom manager needed: Renovate's built-in `quadlet` manager reads the pinned `act_runner` image straight from `gitea-runner.container`. |
 | `LICENSE`, `SECURITY.md` | ✅ | MIT license, secret-handling policy. |
 | `gitea-act-runner.code-workspace` | ✅ | Portable VS Code workspace — open it after cloning. |
 | `runner.env` | ❌ gitignored | **Registration token — secret.** Also holds the per-machine `CI_*` resource limits. |
