@@ -9,12 +9,17 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Least privilege: these jobs only read the repository. Without this block the
+# GITHUB_TOKEN inherits the repository default, which may be read-write.
+permissions:
+  contents: read
+
 jobs:
   lint:
     runs-on: ubuntu-latest
     timeout-minutes: 10   # a hung step (e.g. a stalled apt/download) fails fast instead of idling
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install linters
         # Portable whether the runner runs as root (Gitea/act) or as a sudo-capable
