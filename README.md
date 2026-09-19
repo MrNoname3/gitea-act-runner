@@ -119,9 +119,17 @@ Suggested profiles:
 ```ini
 # small / old laptop
 CI_JOB_MEMORY=2g   CI_JOB_CPUS=1.5   CI_RUNNER_CAPACITY=1
-# desktop
-CI_JOB_MEMORY=4g   CI_JOB_CPUS=3     CI_RUNNER_CAPACITY=2
+# desktop (8+ cores, 16GB+ RAM)
+CI_JOB_MEMORY=2g   CI_JOB_CPUS=2     CI_RUNNER_CAPACITY=2-4
 ```
+
+The desktop profile was recalibrated from a live measurement (`podman stats`
+during real CI runs, not a guess): a native-firmware build job (PlatformIO,
+the heaviest workload measured) peaked around 1.3GB RAM and under 2 CPUs, so
+`2g`/`2` leaves comfortable headroom without reserving 4g/4 CPUs a job never
+actually uses. Since the cap is a ceiling (see below), it's cheap to start
+generous and size `CI_RUNNER_CAPACITY` to the host's core count once you've
+watched a real run or two.
 
 > **Ceilings, not reservations — and they stack with capacity.** Each cap applies
 > **per job container**: a job may use *up to* that much, nothing is pre-allocated
