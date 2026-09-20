@@ -253,6 +253,15 @@ hosted on Gitea and push-mirrored to GitHub while CI runs on either side.
   `runs-on:` does not match the runner label.
 - **Job fails at "cleanup" after building fine** → the `actions/cache` v1/v2
   mismatch above.
+- **Every job fails at the first `uses:` step, log shows `failed to copy
+  content to container: ... path escapes from parent`** → a Podman/Buildah
+  regression, not a config issue: recent Buildah versions refuse to copy an
+  archive into a container path that crosses an absolute symlink, and the job
+  image's `/var/run → /run` is exactly that. Affects every job on the runner,
+  not just one repo. Check `podman -v` / `buildah -v` against the [upstream
+  issue](https://github.com/podman-container-tools/podman/issues/29805) for
+  the current fix status; the known-working combination is
+  `podman 5.8.4` / `buildah 1.43.2`.
 - **Runner not online** → `./scripts/logs.sh`; check the URL is reachable
   (`curl -sf $GITEA_INSTANCE_URL/api/v1/version`) and the token was valid.
 - **Commands not found from inside a sandboxed shell** (e.g. a Flatpak'd editor
