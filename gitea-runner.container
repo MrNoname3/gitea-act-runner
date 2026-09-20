@@ -28,7 +28,10 @@ Volume=%t/podman/podman.sock:/var/run/docker.sock
 SecurityLabelDisable=true
 
 [Service]
-Restart=on-failure
+# always, not on-failure: on-failure ignores a clean (status-0) exit, so a
+# stop from outside this service (host maintenance, a network reset) leaves
+# it dead. An explicit `systemctl --user stop` still wins over Restart=.
+Restart=always
 RestartSec=10
 
 [Install]
