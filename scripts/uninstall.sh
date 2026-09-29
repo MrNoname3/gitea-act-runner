@@ -12,7 +12,7 @@ Stop and remove the Gitea Actions runner (service + quadlet + container).
 
 Options:
   --purge     Also delete data/.runner (loses the registration; then delete the
-              runner in the Gitea admin UI too).
+              runner in the Gitea admin UI too) and the actions cache volume.
   -h, --help  Show this help and exit.
 EOF
 }
@@ -30,6 +30,7 @@ done
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd -P)"
 SERVICE="gitea-runner.service"
+CACHE_VOLUME="gitea-runner-cache"   # must match the Volume= line in gitea-runner.container
 QUADLET_DST="${XDG_CONFIG_HOME:-$HOME/.config}/containers/systemd/gitea-runner.container"
 
 say()  { printf '\033[1;32m==>\033[0m %s\n' "$*"; }
@@ -47,6 +48,8 @@ if [ "$PURGE" -eq 1 ]; then
   say "--purge: deleting data/.runner (the registration is lost)."
   rm -f "$REPO_DIR/data/.runner"
   warn "Also delete this runner from the Gitea admin UI (Runners list)."
+  say "--purge: deleting the $CACHE_VOLUME volume (the actions cache)."
+  podman volume rm -f "$CACHE_VOLUME" >/dev/null 2>&1 || true
 fi
 
 say "Done."

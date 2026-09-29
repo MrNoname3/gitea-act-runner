@@ -20,6 +20,9 @@ ContainerName=gitea-runner
 EnvironmentFile=__CI_RUNNER_DIR__/runner.env
 Volume=__CI_RUNNER_DIR__/config.yaml:/config.yaml:ro
 Volume=__CI_RUNNER_DIR__/data:/data
+# The actions cache, on a named volume so it outlives the container, which is
+# removed on every stop. `scripts/uninstall.sh --purge` deletes it.
+Volume=gitea-runner-cache:/cache
 # Give the runner the host's rootless podman socket so it can start job
 # containers. %t = XDG_RUNTIME_DIR (portable across machines/users).
 Volume=%t/podman/podman.sock:/var/run/docker.sock

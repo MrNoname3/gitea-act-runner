@@ -18,6 +18,9 @@ runner:
 
 cache:
   enabled: true
+  # The gitea-runner-cache volume (see gitea-runner.container). The runner's
+  # default is a directory inside the container, emptied by every restart.
+  dir: /cache
 
 container:
   network: ""
