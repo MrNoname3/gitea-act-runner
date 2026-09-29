@@ -22,6 +22,9 @@ cache:
 container:
   network: ""
   privileged: false
+  # Re-pull the job image before every job, so the moving `act-latest` tag
+  # stays current. The runner's own default is false.
+  force_pull: true
   # Per-job resource limits (memory / CPU) rendered from runner.env. Empty
   # string = no limit. These flags are passed to `podman create` for every job
   # container. Job containers are started via the host podman socket, so they

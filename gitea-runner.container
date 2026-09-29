@@ -5,7 +5,7 @@
 # repo's absolute path and installs the processed unit. See README.md.
 
 [Unit]
-Description=Gitea Actions runner (act_runner)
+Description=Gitea Actions runner (gitea/runner)
 Wants=network-online.target
 After=network-online.target podman.socket
 
@@ -15,7 +15,7 @@ After=network-online.target podman.socket
 # update path — we deliberately do NOT set `AutoUpdate=registry`, which would fight
 # the pin and the Renovate-controlled flow (and silently move the runner version
 # out from under the committed config). See renovate.json.
-Image=docker.io/gitea/act_runner:0.6.1
+Image=docker.io/gitea/runner:4.0.0
 ContainerName=gitea-runner
 EnvironmentFile=__CI_RUNNER_DIR__/runner.env
 Volume=__CI_RUNNER_DIR__/config.yaml:/config.yaml:ro

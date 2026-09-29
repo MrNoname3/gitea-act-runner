@@ -10,7 +10,7 @@ off when a job is pushed, the job simply queues on the server and runs once the
 machine is back and the runner reconnects.
 
 > **Scope / compatibility.** Linux only, with **rootless Podman ≥ 4.4** (quadlet
-> support) and a **systemd user session**. Targets **Gitea** (1.20+) and
+> support) and a **systemd user session**. Targets **Gitea** (1.21+) and
 > **Forgejo** Actions. Docker and non-systemd setups are out of scope. Developed
 > on Podman 5.8 / Fedora-based (SELinux).
 
@@ -20,7 +20,7 @@ machine is back and the runner reconnects.
 
 | Piece | Role |
 |-------|------|
-| `gitea/act_runner` container | Registers with the server, polls for jobs, launches a job container per job. |
+| `gitea/runner` container | Registers with the server, polls for jobs, launches a job container per job. |
 | `config.yaml.template` → `config.yaml` | Runner config. The template is committed; `setup.sh` renders the (gitignored) `config.yaml` from it, filling in the label→image mapping and the **per-machine resource limits**. |
 | `runner.env` | Registration inputs (instance URL, token, name) **and per-machine resource limits**. **Secret — gitignored.** |
 | `data/.runner` | Registration state written after first start. **Secret — gitignored.** |
@@ -141,7 +141,7 @@ watched a real run or two.
 > (soft limit) — so a too-low CPU cap slows builds, a too-low memory cap fails them.
 
 > **Why not limit the runner container instead?** Job containers are started via
-> the host Podman socket, so they are **siblings** of the `act_runner` container,
+> the host Podman socket, so they are **siblings** of the runner container,
 > not children. A `MemoryMax=`/`CPUQuota=` on the quadlet would only throttle the
 > lightweight orchestrator, not the jobs. The per-job `--memory`/`--cpus` above is
 > what actually caps a build.
@@ -175,7 +175,8 @@ git pull && ./scripts/setup.sh   # apply a runner-version bump (Renovate PR) + r
 ./scripts/uninstall.sh --purge   # also delete the registration
 ```
 
-To also update the **job** image:
+The **job** image is re-pulled before every job (`force_pull: true` in the
+template), so it follows the `act-latest` tag by itself. To refresh it by hand:
 
 ```bash
 podman pull ghcr.io/catthehacker/ubuntu:act-latest
@@ -204,13 +205,17 @@ The runner is useless unless the workflow can actually match it:
 Note that Gitea also scans `.github/workflows/`, so the same workflow file is
 picked up on both platforms.
 
-### Caveat: `actions/cache` on a self-hosted runner
+### `actions/cache` on a self-hosted runner
 
-`act_runner`'s built-in cache server speaks the **legacy v1** cache API, but
-`actions/cache@v4.2+` (and `@v6`) use the **v2** protocol. The save step then
-404s in the "cleanup" phase and fails the job. Gate the cache step to github.com
-(`if: ${{ github.server_url == 'https://github.com' }}`) so it is skipped on
-Gitea, or pin `actions/cache@v3` for Gitea-only.
+The runner's built-in cache server serves the **v2** cache API (`cache.v2`, on
+by default) next to the legacy v1 one, so the stock `actions/cache@v4+` and
+`actions/upload-artifact@v4` work as they do on github.com.
+
+The older `gitea/act_runner` (0.x) speaks **v1 only**: there the save step of
+`actions/cache@v4.2+` 404s in the "cleanup" phase and fails the job. On such a
+runner, gate the cache step to github.com
+(`if: ${{ github.server_url == 'https://github.com' }}`) or pin
+`actions/cache@v3`.
 
 ---
 
@@ -218,8 +223,9 @@ Gitea, or pin `actions/cache@v3` for Gitea-only.
 
 `.github/workflows/lint.yml` (shellcheck + yamllint) is written to run on **both**
 GitHub Actions and Gitea Actions: `runs-on: ubuntu-latest`, no github-only guard,
-and no `actions/cache` (see the caveat above). This mirrors how an app repo can be
-hosted on Gitea and push-mirrored to GitHub while CI runs on either side.
+and no `actions/cache`, so it also runs on older runners (see the section
+above). This mirrors how an app repo can be hosted on Gitea and push-mirrored
+to GitHub while CI runs on either side.
 
 ---
 
@@ -233,7 +239,7 @@ hosted on Gitea and push-mirrored to GitHub while CI runs on either side.
 | `runner.env.example` | ✅ | Template for `runner.env`. |
 | `scripts/*.sh` | ✅ | setup / uninstall / status / logs (`--help` on the first two). |
 | `.github/workflows/lint.yml`, `.yamllint` | ✅ | Lint CI + its config. |
-| `renovate.json` | ✅ | Renovate config. No custom manager needed: Renovate's built-in `quadlet` manager reads the pinned `act_runner` image straight from `gitea-runner.container`. |
+| `renovate.json` | ✅ | Renovate config. No custom manager needed: Renovate's built-in `quadlet` manager reads the pinned `gitea/runner` image straight from `gitea-runner.container`. |
 | `LICENSE`, `SECURITY.md` | ✅ | MIT license, secret-handling policy. |
 | `AGENTS.md`, `CLAUDE.md` | ✅ | Notes for coding agents; `CLAUDE.md` only imports `AGENTS.md`. |
 | `gitea-act-runner.code-workspace` | ✅ | Portable VS Code workspace — open it after cloning. |
@@ -252,8 +258,9 @@ hosted on Gitea and push-mirrored to GitHub while CI runs on either side.
   `runner.env`.
 - **Jobs `skipped`** → the workflow guard still restricts to github.com, or
   `runs-on:` does not match the runner label.
-- **Job fails at "cleanup" after building fine** → the `actions/cache` v1/v2
-  mismatch above.
+- **Job fails at "cleanup" after building fine** → a runner whose cache server
+  speaks v1 only (the old `gitea/act_runner` 0.x); see the `actions/cache`
+  section above.
 - **Every job fails at the first `uses:` step, log shows `failed to copy
   content to container: ... path escapes from parent`** → a Podman/Buildah
   regression, not a config issue: recent Buildah versions refuse to copy an
