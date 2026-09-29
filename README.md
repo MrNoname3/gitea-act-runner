@@ -1,6 +1,6 @@
 # gitea-act-runner
 
-Run a **Gitea / Forgejo Actions runner** as a rootless **Podman** container,
+Run a **Gitea Actions runner** as a rootless **Podman** container,
 managed by a **systemd** user *quadlet* so it survives reboots and starts on its
 own. Clone the repo, drop in a registration token, run one script.
 
@@ -10,9 +10,9 @@ off when a job is pushed, the job simply queues on the server and runs once the
 machine is back and the runner reconnects.
 
 > **Scope / compatibility.** Linux only, with **rootless Podman ≥ 4.4** (quadlet
-> support) and a **systemd user session**. Targets **Gitea** (1.21+) and
-> **Forgejo** Actions. Docker and non-systemd setups are out of scope. Developed
-> on Podman 5.8 / Fedora-based (SELinux).
+> support) and a **systemd user session**. Targets **Gitea** Actions (1.21+).
+> Docker and non-systemd setups are out of scope. Developed on Podman 5.8 /
+> Fedora-based (SELinux).
 
 ---
 
