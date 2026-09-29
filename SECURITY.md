@@ -1,5 +1,34 @@
 # Security
 
+## Who can run code on this machine
+
+A registered runner executes whatever the workflows it serves tell it to.
+Anyone who can make a workflow run on it, by pushing to a repository it serves
+or by any other event that repository's workflows react to, runs code on this
+machine, inside a job container.
+
+**What a job container gets:** a network of its own with outbound access, the
+LAN included; the per-job `--memory`/`--cpus` caps from `runner.env`; and the
+secrets its repository is given. It does **not** get the Podman socket
+(`docker_host: "-"`), any host path (`valid_volumes: []` forbids every mount),
+or privileged mode (`privileged: false`). With privileged off, the runner also
+drops the options from a workflow's own `container.options` that could escape
+the container (`--pid`, `--cap-add`, `--security-opt`, `--device` and the
+like). Loosening any of these three settings loosens them for every workflow
+on every repository the runner serves.
+
+**What the runner container holds:** the host's rootless Podman socket, which
+it needs to start job containers. Whoever controls that socket controls every
+container of the account running the runner, and through a bind mount that
+account's files, so treat it as a login as that user. That is why the socket
+stops at the runner and never reaches a job.
+
+**Narrowing who that is:** the token from *Site Administration* registers an
+instance-wide runner, which takes jobs from every repository on the instance.
+On an instance with other users, register with a token scoped to an
+organization, a user or a single repository instead, so that only that scope's
+workflows run here.
+
 ## Secrets in this repo
 
 Two files hold secrets and are **git-ignored** — never commit them:

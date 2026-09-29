@@ -240,7 +240,7 @@ to GitHub while CI runs on either side.
 | `scripts/*.sh` | ✅ | setup / uninstall / status / logs (`--help` on the first two). |
 | `.github/workflows/lint.yml`, `.yamllint` | ✅ | Lint CI + its config. |
 | `renovate.json` | ✅ | Renovate config. No custom manager needed: Renovate's built-in `quadlet` manager reads the pinned `gitea/runner` image straight from `gitea-runner.container`. |
-| `LICENSE`, `SECURITY.md` | ✅ | MIT license, secret-handling policy. |
+| `LICENSE`, `SECURITY.md` | ✅ | MIT license; who can run code on the runner, and secret handling. |
 | `AGENTS.md`, `CLAUDE.md` | ✅ | Notes for coding agents; `CLAUDE.md` only imports `AGENTS.md`. |
 | `gitea-act-runner.code-workspace` | ✅ | Portable VS Code workspace — open it after cloning. |
 | `runner.env` | ❌ gitignored | **Registration token — secret.** Also holds the per-machine `CI_*` resource limits. |
