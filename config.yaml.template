@@ -23,7 +23,9 @@ cache:
   dir: /cache
 
 container:
-  network: ""
+  # The runner's own network (gitea-runner.network): a job reaches the
+  # runner's cache server only on a network the runner container is also on.
+  network: "gitea-runner"
   privileged: false
   # Re-pull the job image before every job, so the moving `act-latest` tag
   # stays current. The runner's own default is false.

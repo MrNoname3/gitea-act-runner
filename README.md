@@ -9,10 +9,10 @@ only), so it works behind NAT/firewall with no inbound port. If the machine is
 off when a job is pushed, the job simply queues on the server and runs once the
 machine is back and the runner reconnects.
 
-> **Scope / compatibility.** Linux only, with **rootless Podman ≥ 4.4** (quadlet
-> support) and a **systemd user session**. Targets **Gitea** Actions (1.21+).
-> Docker and non-systemd setups are out of scope. Developed on Podman 5.8 /
-> Fedora-based (SELinux).
+> **Scope / compatibility.** Linux only, with **rootless Podman ≥ 4.7** (quadlet
+> support, named networks) and a **systemd user session**. Targets **Gitea**
+> Actions (1.21+). Docker and non-systemd setups are out of scope. Developed on
+> Podman 5.8 / Fedora-based (SELinux).
 
 ---
 
@@ -26,6 +26,7 @@ machine is back and the runner reconnects.
 | `data/.runner` | Registration state written after first start. **Secret — gitignored.** |
 | `gitea-runner-cache` volume | The actions cache (`actions/cache`), kept across restarts. |
 | `gitea-runner.container` | Quadlet unit template; `scripts/setup.sh` installs it. |
+| `gitea-runner.network` | Quadlet unit for the `gitea-runner` network, which the runner and its jobs share. |
 | systemd user service + lingering | Auto-start on boot, restart on failure, no login needed. |
 
 Jobs run in a **full** environment image (`catthehacker/ubuntu:act-latest`),
@@ -36,7 +37,7 @@ and similar. A slim `node:*` image is **not** enough.
 
 ## Prerequisites
 
-- Rootless **Podman ≥ 4.4** (developed on 5.8).
+- Rootless **Podman ≥ 4.7** (developed on 5.8).
 - A **systemd** user session (`systemctl --user` works).
 - Permission to enable **lingering** (`loginctl enable-linger <user>`; may need sudo).
 - Network access from this machine to the server (a normal HTTPS client).
@@ -172,7 +173,7 @@ watched a real run or two.
 ./scripts/logs.sh            # follow logs (optional arg: tail line count)
 systemctl --user restart gitea-runner.service
 git pull && ./scripts/setup.sh   # apply a runner-version bump (Renovate PR) + restart
-./scripts/uninstall.sh       # stop + remove (keeps data/.runner)
+./scripts/uninstall.sh       # stop + remove, network included (keeps data/.runner)
 ./scripts/uninstall.sh --purge   # also delete the registration and the cache volume
 ```
 
@@ -216,6 +217,11 @@ repository's share (`cache.retention`, `cache.repo_size_limit`). Each machine
 keeps its own cache, so a job only finds what an earlier job on the same
 runner saved.
 
+Jobs reach that server because they run on the runner's own network
+(`container.network: gitea-runner`, created by `gitea-runner.network`). Jobs
+running at the same time share it, so they can reach each other, and two of
+them with a `services:` container of the same name both answer to that name.
+
 The older `gitea/act_runner` (0.x) speaks **v1 only**: there the save step of
 `actions/cache@v4.2+` 404s in the "cleanup" phase and fails the job. On such a
 runner, gate the cache step to github.com
@@ -241,6 +247,7 @@ to GitHub while CI runs on either side.
 | `config.yaml.template` | ✅ | Portable runner config with `__CI_*__` placeholders. |
 | `config.yaml` | ❌ generated | Rendered per-machine by `setup.sh`; gitignored. |
 | `gitea-runner.container` | ✅ | Quadlet template (path is a placeholder). |
+| `gitea-runner.network` | ✅ | Quadlet for the network the runner and its jobs share. |
 | `runner.env.example` | ✅ | Template for `runner.env`. |
 | `scripts/*.sh` | ✅ | setup / uninstall / status / logs (`--help` on the first two). |
 | `.github/workflows/lint.yml`, `.yamllint` | ✅ | Lint CI + its config. |
@@ -275,6 +282,10 @@ to GitHub while CI runs on either side.
   issue](https://github.com/podman-container-tools/podman/issues/29805) for
   the current fix status; the known-working combination is
   `podman 5.8.4` / `buildah 1.43.2`.
+- **`actions/cache` never saves: "Unable to reserve cache … another job may be
+  creating this cache", and every restore "Cache not found"** → the job cannot
+  reach the runner's cache server. Check that `container.network` in `config.yaml` names the
+  network the runner container is on (`podman inspect gitea-runner`).
 - **Runner not online** → `./scripts/logs.sh`; check the URL is reachable
   (`curl -sf $GITEA_INSTANCE_URL/api/v1/version`) and the token was valid.
 - **Commands not found from inside a sandboxed shell** (e.g. a Flatpak'd editor

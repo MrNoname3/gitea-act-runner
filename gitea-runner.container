@@ -17,6 +17,9 @@ After=network-online.target podman.socket
 # out from under the committed config). See renovate.json.
 Image=docker.io/gitea/runner:4.1.0
 ContainerName=gitea-runner
+# The jobs run on this network too (container.network in config.yaml); that is
+# how they reach the runner's cache server.
+Network=gitea-runner.network
 EnvironmentFile=__CI_RUNNER_DIR__/runner.env
 Volume=__CI_RUNNER_DIR__/config.yaml:/config.yaml:ro
 Volume=__CI_RUNNER_DIR__/data:/data

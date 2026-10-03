@@ -7,8 +7,9 @@ Anyone who can make a workflow run on it, by pushing to a repository it serves
 or by any other event that repository's workflows react to, runs code on this
 machine, inside a job container.
 
-**What a job container gets:** a network of its own with outbound access, the
-LAN included; the per-job `--memory`/`--cpus` caps from `runner.env`; and the
+**What a job container gets:** the runner's network, with outbound access, the
+LAN included, shared with the runner and with every other job running at that
+moment; the per-job `--memory`/`--cpus` caps from `runner.env`; and the
 secrets its repository is given. It does **not** get the Podman socket
 (`docker_host: "-"`), any host path (`valid_volumes: []` forbids every mount),
 or privileged mode (`privileged: false`). With privileged off, the runner also
@@ -21,7 +22,9 @@ on every repository the runner serves.
 it needs to start job containers. Whoever controls that socket controls every
 container of the account running the runner, and through a bind mount that
 account's files, so treat it as a login as that user. That is why the socket
-stops at the runner and never reaches a job.
+stops at the runner and never reaches a job. Its cache server, which jobs do
+reach, ties each entry to the repository of the job that saved it, so a job
+cannot read or overwrite another repository's cache.
 
 **Narrowing who that is:** the token from *Site Administration* registers an
 instance-wide runner, which takes jobs from every repository on the instance.

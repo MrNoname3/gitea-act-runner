@@ -5,10 +5,11 @@ agent working on this repository needs and cannot read off the files.
 
 ## Generated files: edit the source, then run setup.sh
 
-`config.yaml` and the installed quadlet
-(`~/.config/containers/systemd/gitea-runner.container`) are rendered by
-`scripts/setup.sh` from `config.yaml.template`, `gitea-runner.container` and
-`runner.env`. Edit those, never the output.
+`config.yaml` and the installed quadlets
+(`~/.config/containers/systemd/gitea-runner.container` and `.network`) are
+written by `scripts/setup.sh` from `config.yaml.template`,
+`gitea-runner.container`, `gitea-runner.network` and `runner.env`. Edit those,
+never the output.
 
 Running `setup.sh` restarts the runner, and a restart cancels every job in
 progress on it. Check that nothing is running first: while a job runs,

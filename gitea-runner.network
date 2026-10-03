@@ -1,0 +1,6 @@
+# Podman Quadlet unit for the network the runner and its job containers share.
+# `scripts/setup.sh` installs it next to gitea-runner.container. See README.md.
+
+[Network]
+# A fixed name, so that container.network in config.yaml can refer to it.
+NetworkName=gitea-runner

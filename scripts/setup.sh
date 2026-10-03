@@ -6,8 +6,8 @@
 #   - preflight checks (rootless podman + user systemd)
 #   - enables user lingering (so the service runs without an active login and
 #     starts on boot) and the podman user socket
-#   - renders the quadlet with this repo's absolute path and installs it into
-#     ~/.config/containers/systemd/
+#   - renders the quadlet with this repo's absolute path and installs it, with
+#     the network quadlet, into ~/.config/containers/systemd/
 #   - daemon-reload + (re)start, then reports status
 #
 set -euo pipefail
@@ -45,6 +45,8 @@ SERVICE="gitea-runner.service"
 QUADLET_SRC="$REPO_DIR/$UNIT_NAME"
 QUADLET_DST_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/containers/systemd"
 QUADLET_DST="$QUADLET_DST_DIR/$UNIT_NAME"
+NETWORK_UNIT="gitea-runner.network"
+NETWORK_SRC="$REPO_DIR/$NETWORK_UNIT"
 ENV_FILE="$REPO_DIR/runner.env"
 DATA_DIR="$REPO_DIR/data"
 CONFIG_TEMPLATE="$REPO_DIR/config.yaml.template"
@@ -69,6 +71,7 @@ if [ "$DRY" -eq 1 ]; then say "Dry run — no changes will be made."; fi
 command -v podman    >/dev/null 2>&1 || die "'podman' not found in PATH."
 command -v systemctl >/dev/null 2>&1 || die "'systemctl' not found (user systemd is required)."
 [ -f "$QUADLET_SRC" ] || die "Quadlet template missing: $QUADLET_SRC"
+[ -f "$NETWORK_SRC" ] || die "Network quadlet missing: $NETWORK_SRC"
 [ -f "$CONFIG_TEMPLATE" ] || die "Config template missing: $CONFIG_TEMPLATE"
 
 # 2) runner.env --------------------------------------------------------------
@@ -139,13 +142,15 @@ else
       "$CONFIG_TEMPLATE" > "$CONFIG_DST"
 fi
 
-# 8) Render + install the quadlet -------------------------------------------
-say "Installing quadlet -> $QUADLET_DST"
+# 8) Render + install the quadlets ------------------------------------------
+say "Installing quadlets -> $QUADLET_DST_DIR ($UNIT_NAME, $NETWORK_UNIT)"
 if [ "$DRY" -eq 1 ]; then
   printf '\033[1;36m[dry-run]\033[0m render %s (__CI_RUNNER_DIR__=%s) -> %s\n' "$QUADLET_SRC" "$REPO_DIR" "$QUADLET_DST"
+  printf '\033[1;36m[dry-run]\033[0m copy %s -> %s\n' "$NETWORK_SRC" "$QUADLET_DST_DIR/$NETWORK_UNIT"
 else
   mkdir -p "$QUADLET_DST_DIR"
   sed "s#__CI_RUNNER_DIR__#${REPO_DIR}#g" "$QUADLET_SRC" > "$QUADLET_DST"
+  cp "$NETWORK_SRC" "$QUADLET_DST_DIR/$NETWORK_UNIT"
 fi
 
 # 9) Reload systemd + (re)start ---------------------------------------------
