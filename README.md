@@ -172,7 +172,7 @@ watched a real run or two.
 ./scripts/status.sh          # service + container status
 ./scripts/logs.sh            # follow logs (optional arg: tail line count)
 systemctl --user restart gitea-runner.service
-git pull && ./scripts/setup.sh   # apply a runner-version bump (Renovate PR) + restart
+git pull && ./scripts/setup.sh   # apply a runner-version bump (Renovate PR) + restart, drop the old image
 ./scripts/cleanup.sh --dry-run   # list what interrupted jobs left behind (runner stopped)
 ./scripts/uninstall.sh       # stop + remove, network included (keeps data/.runner)
 ./scripts/uninstall.sh --purge   # also delete the registration and the cache volume

@@ -9,6 +9,7 @@
 #   - renders the quadlet with this repo's absolute path and installs it, with
 #     the network quadlet, into ~/.config/containers/systemd/
 #   - daemon-reload + (re)start, then reports status
+#   - removes the runner images of earlier versions
 #
 set -euo pipefail
 
@@ -172,6 +173,14 @@ else
   systemctl --user --no-pager status "$SERVICE" || true
   die "Runner failed to start. Check the logs above."
 fi
+
+# 11) Remove the runner images an earlier version of the quadlet pulled ------
+IMAGE="$(sed -n 's/^Image=//p' "$QUADLET_SRC")"
+for ref in $(podman images --format '{{.Repository}}:{{.Tag}}' \
+    | grep -E '^docker\.io/gitea/(runner|act_runner):' | grep -vxF "$IMAGE" || true); do
+  say "Removing old runner image $ref"
+  podman rmi "$ref" >/dev/null || warn "Could not remove $ref."
+done
 
 echo
 say "Recent runner log:"
