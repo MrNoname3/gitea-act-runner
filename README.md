@@ -173,6 +173,7 @@ watched a real run or two.
 ./scripts/logs.sh            # follow logs (optional arg: tail line count)
 systemctl --user restart gitea-runner.service
 git pull && ./scripts/setup.sh   # apply a runner-version bump (Renovate PR) + restart
+./scripts/cleanup.sh --dry-run   # list what interrupted jobs left behind (runner stopped)
 ./scripts/uninstall.sh       # stop + remove, network included (keeps data/.runner)
 ./scripts/uninstall.sh --purge   # also delete the registration and the cache volume
 ```
@@ -192,6 +193,14 @@ podman pull ghcr.io/catthehacker/ubuntu:act-latest
 `WantedBy=default.target`, so the runner starts automatically at boot. Turning
 the machine off is safe: pushed jobs queue on the server and run by themselves
 once the machine is back and the runner reconnects. Nothing hangs server-side.
+
+A job running when the machine shuts down leaves its container and its two
+volumes behind, often several GB, which the runner never removes by itself.
+`scripts/cleanup.sh` does, and the service runs it before every start: it
+removes the `GITEA-ACTIONS-TASK-*` containers that are not running, the job
+volumes no container holds, and the untagged copies of the job image that
+`force_pull` leaves after the `act-latest` tag moves. A suspend stops nothing:
+after resume the same runner still holds the job and tears it down when it ends.
 
 ---
 
@@ -249,7 +258,7 @@ to GitHub while CI runs on either side.
 | `gitea-runner.container` | ✅ | Quadlet template (path is a placeholder). |
 | `gitea-runner.network` | ✅ | Quadlet for the network the runner and its jobs share. |
 | `runner.env.example` | ✅ | Template for `runner.env`. |
-| `scripts/*.sh` | ✅ | setup / uninstall / status / logs (`--help` on the first two). |
+| `scripts/*.sh` | ✅ | setup / uninstall / cleanup / status / logs (`--help` on the first three). |
 | `.github/workflows/lint.yml`, `.yamllint` | ✅ | Lint CI + its config. |
 | `renovate.json` | ✅ | Renovate config. No custom manager needed: Renovate's built-in `quadlet` manager reads the pinned `gitea/runner` image straight from `gitea-runner.container`. |
 | `LICENSE`, `SECURITY.md` | ✅ | MIT license; who can run code on the runner, and secret handling. |

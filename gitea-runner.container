@@ -34,6 +34,9 @@ Volume=%t/podman/podman.sock:/var/run/docker.sock
 SecurityLabelDisable=true
 
 [Service]
+# Removes the containers and volumes of jobs a shutdown cut off; the leading
+# `-` keeps a failed cleanup from blocking the start.
+ExecStartPre=-__CI_RUNNER_DIR__/scripts/cleanup.sh
 # always, not on-failure: on-failure ignores a clean (status-0) exit, so a
 # stop from outside this service (host maintenance, a network reset) leaves
 # it dead. An explicit `systemctl --user stop` still wins over Restart=.
