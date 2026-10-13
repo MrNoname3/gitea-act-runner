@@ -12,8 +12,11 @@ written by `scripts/setup.sh` from `config.yaml.template`,
 never the output.
 
 Running `setup.sh` restarts the runner, and a restart cancels every job in
-progress on it. Check that nothing is running first: while a job runs,
-`podman ps` lists a `GITEA-ACTIONS-TASK-*` container.
+progress on it. Check that nothing is running first. A job's container is
+not enough to go by: after it is gone the runner still reports the result,
+then removes the job's two `GITEA-ACTIONS-TASK-*` volumes. A job is over when
+the Actions API shows it `completed`, or `podman volume ls` no longer lists its
+volumes.
 
 The checkout's absolute path is baked into the installed quadlet. After moving
 the checkout, run `setup.sh` from the new location; until then the service
