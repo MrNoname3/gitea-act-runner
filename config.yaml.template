@@ -21,6 +21,9 @@ cache:
   # The gitea-runner-cache volume (see gitea-runner.container). The runner's
   # default is a directory inside the container, emptied by every restart.
   dir: /cache
+  # Caps the whole cache, on top of the runner's own per-repository limit and
+  # its expiry of entries left unused (cache.retention).
+  size_limit: 5GB
 
 container:
   # The runner's own network (gitea-runner.network): a job reaches the
@@ -42,3 +45,9 @@ container:
   # `mkdir /var/run/docker.sock` on the host -> "permission denied" and every
   # job fails before its container starts.
   docker_host: "-"
+
+health_check:
+  # Stop taking jobs while the disk holding the podman storage has less than
+  # this much free, and keep the cache from filling the disk past it.
+  enabled: true
+  min_free_disk_space_mb: 8192

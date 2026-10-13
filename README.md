@@ -202,6 +202,9 @@ volumes no container holds, and the untagged copies of the job image that
 `force_pull` leaves after the `act-latest` tag moves. A suspend stops nothing:
 after resume the same runner still holds the job and tears it down when it ends.
 
+While less than `health_check.min_free_disk_space_mb` is free, the runner takes
+no new jobs; they wait on the server or go to another runner.
+
 ---
 
 ## Workflow-side requirement (in your app repo, not here)
@@ -222,9 +225,10 @@ The runner's built-in cache server serves the **v2** cache API (`cache.v2`, on
 by default) next to the legacy v1 one, so the stock `actions/cache@v4+` and
 `actions/upload-artifact@v4` work as they do on github.com. Entries live on the
 `gitea-runner-cache` volume; the runner drops those left unused and caps each
-repository's share (`cache.retention`, `cache.repo_size_limit`). Each machine
-keeps its own cache, so a job only finds what an earlier job on the same
-runner saved.
+repository's share (`cache.retention`, `cache.repo_size_limit`) and the whole
+cache (`cache.size_limit`), and it sheds entries to keep the free-space floor of
+`health_check`. Each machine keeps its own cache, so a job only finds what an
+earlier job on the same runner saved.
 
 Jobs reach that server because they run on the runner's own network
 (`container.network: gitea-runner`, created by `gitea-runner.network`). Jobs
