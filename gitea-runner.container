@@ -37,6 +37,8 @@ SecurityLabelDisable=true
 # Removes the containers and volumes of jobs a shutdown cut off; the leading
 # `-` keeps a failed cleanup from blocking the start.
 ExecStartPre=-__CI_RUNNER_DIR__/scripts/cleanup.sh
+# At boot the runner can start before the host's network is up.
+ExecStartPre=-__CI_RUNNER_DIR__/scripts/wait-for-gitea.sh
 # always, not on-failure: on-failure ignores a clean (status-0) exit, so a
 # stop from outside this service (host maintenance, a network reset) leaves
 # it dead. An explicit `systemctl --user stop` still wins over Restart=.

@@ -193,6 +193,9 @@ podman pull ghcr.io/catthehacker/ubuntu:act-latest
 `WantedBy=default.target`, so the runner starts automatically at boot. Turning
 the machine off is safe: pushed jobs queue on the server and run by themselves
 once the machine is back and the runner reconnects. Nothing hangs server-side.
+Before it starts, the service waits up to a minute for the instance's hostname
+to resolve (`scripts/wait-for-gitea.sh`), since at boot a user service can
+start before the network is up.
 
 A job running when the machine shuts down leaves its container and its two
 volumes behind, often several GB, which the runner never removes by itself.
@@ -262,7 +265,7 @@ to GitHub while CI runs on either side.
 | `gitea-runner.container` | ✅ | Quadlet template (path is a placeholder). |
 | `gitea-runner.network` | ✅ | Quadlet for the network the runner and its jobs share. |
 | `runner.env.example` | ✅ | Template for `runner.env`. |
-| `scripts/*.sh` | ✅ | setup / uninstall / cleanup / status / logs (`--help` on the first three). |
+| `scripts/*.sh` | ✅ | setup / uninstall / cleanup / status / logs / wait-for-gitea (`--help` on the first three). |
 | `.github/workflows/lint.yml`, `.yamllint` | ✅ | Lint CI + its config. |
 | `renovate.json` | ✅ | Renovate config. No custom manager needed: Renovate's built-in `quadlet` manager reads the pinned `gitea/runner` image straight from `gitea-runner.container`. |
 | `LICENSE`, `SECURITY.md` | ✅ | MIT license; who can run code on the runner, and secret handling. |
