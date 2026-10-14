@@ -302,6 +302,19 @@ to GitHub while CI runs on either side.
   creating this cache", and every restore "Cache not found"** → the job cannot
   reach the runner's cache server. Check that `container.network` in `config.yaml` names the
   network the runner container is on (`podman inspect gitea-runner`).
+- **Every job and the runner lose name resolution after a job whose name has a
+  space or a comma (matrix jobs such as `test (3.8)`): "Could not resolve
+  host", and the runner logs `lookup … on 10.89.0.1:53: … connection refused`
+  and fetches no more jobs** → Netavark older than 1.15 (Podman 4.x distros;
+  `netavark --version`, under `/usr/libexec/podman/` or `/usr/lib/podman/`).
+  The runner gives each job container its job name as a network alias, Netavark
+  writes it unchecked into aardvark-dns's space-separated config, and
+  aardvark-dns exits on its next reload
+  ([netavark#1019](https://github.com/containers/netavark/issues/1019)).
+  Netavark 1.15+ skips such an alias. On an older one, give the job a name
+  without spaces or commas; a name with an expression gets no matrix suffix,
+  e.g. `name: test-${{ matrix.python-version }}`. Restart the runner to bring
+  aardvark-dns back.
 - **Runner not online** → `./scripts/logs.sh`; check the URL is reachable
   (`curl -sf $GITEA_INSTANCE_URL/api/v1/version`) and the token was valid.
 - **Commands not found from inside a sandboxed shell** (e.g. a Flatpak'd editor
