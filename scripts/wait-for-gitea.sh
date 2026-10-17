@@ -3,9 +3,10 @@
 # Wait, for at most a minute, until the hostname of GITEA_INSTANCE_URL in
 # runner.env resolves.
 #
-# The quadlet runs this before every start of the runner, which exits at once
-# when it cannot reach the server. At boot a user service can start before the
-# host's network is up; Podman 5 waits for it, Podman 4 does not.
+# The quadlet runs this before every start of the runner. At boot a user service
+# can start before the host's network is up; Podman 5 waits for it, Podman 4
+# does not. The runner would then retry by itself, but only every 30 seconds,
+# and with a warning in the log at every boot.
 #
 set -euo pipefail
 

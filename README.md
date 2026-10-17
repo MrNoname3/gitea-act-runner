@@ -195,15 +195,19 @@ the machine off is safe: pushed jobs queue on the server and run by themselves
 once the machine is back and the runner reconnects. Nothing hangs server-side.
 Before it starts, the service waits up to a minute for the instance's hostname
 to resolve (`scripts/wait-for-gitea.sh`), since at boot a user service can
-start before the network is up.
+start before the network is up; the runner would retry by itself, but with a
+warning in the log at every boot.
 
-A job running when the machine shuts down leaves its container and its two
-volumes behind, often several GB, which the runner never removes by itself.
-`scripts/cleanup.sh` does, and the service runs it before every start: it
-removes the `GITEA-ACTIONS-TASK-*` containers that are not running, the job
-volumes no container holds, and the untagged copies of the job image that
-`force_pull` leaves after the `act-latest` tag moves. A suspend stops nothing:
-after resume the same runner still holds the job and tears it down when it ends.
+A job running when the machine shuts down can leave its container behind, and
+with it the job's two volumes, often several GB. The runner never removes such
+a container, and while one holds the volumes, its idle cleanup
+(`runner.idle_cleanup_interval`) logs a warning on every pass instead of
+removing them. `scripts/cleanup.sh` does, and the service runs it before every
+start: it removes the `GITEA-ACTIONS-TASK-*` containers that are not running,
+the job volumes no container holds, and the untagged copies of the job image
+that `force_pull` leaves after the `act-latest` tag moves. A suspend stops
+nothing: after resume the same runner still holds the job and tears it down
+when it ends.
 
 While less than `health_check.min_free_disk_space_mb` is free, the runner takes
 no new jobs; they wait on the server or go to another runner.

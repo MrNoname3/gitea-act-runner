@@ -5,8 +5,9 @@
 # untagged.
 #
 # The quadlet runs this before every start of the runner. The runner tears down
-# only the jobs it sees end, and its own idle cleanup skips a volume a container
-# still holds, so a job cut off by a shutdown would otherwise stay on disk.
+# only the jobs it sees end, and its idle cleanup cannot remove a volume a
+# container still holds (it logs a warning on every pass instead), so a job cut
+# off by a shutdown would otherwise stay on disk.
 #
 set -euo pipefail
 
