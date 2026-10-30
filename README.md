@@ -252,7 +252,7 @@ runner, gate the cache step to github.com
 
 ## Compatibility (this repo's own CI)
 
-`.github/workflows/lint.yml` (shellcheck + yamllint) is written to run on **both**
+`.github/workflows/ci.yml` (shellcheck + yamllint) is written to run on **both**
 GitHub Actions and Gitea Actions: `runs-on: ubuntu-latest`, no github-only guard,
 and no `actions/cache`, so it also runs on older runners (see the section
 above). This mirrors how an app repo can be hosted on Gitea and push-mirrored
@@ -270,7 +270,7 @@ to GitHub while CI runs on either side.
 | `gitea-runner.network` | ✅ | Quadlet for the network the runner and its jobs share. |
 | `runner.env.example` | ✅ | Template for `runner.env`. |
 | `scripts/*.sh` | ✅ | setup / uninstall / cleanup / status / logs / wait-for-gitea (`--help` on the first three). |
-| `.github/workflows/lint.yml`, `.yamllint` | ✅ | Lint CI + its config. |
+| `.github/workflows/ci.yml`, `.yamllint` | ✅ | Lint CI + its config. |
 | `renovate.json` | ✅ | Renovate config. No custom manager needed: Renovate's built-in `quadlet` manager reads the pinned `gitea/runner` image straight from `gitea-runner.container`. |
 | `LICENSE`, `SECURITY.md` | ✅ | MIT license; who can run code on the runner, and secret handling. |
 | `AGENTS.md`, `CLAUDE.md` | ✅ | Notes for coding agents; `CLAUDE.md` only imports `AGENTS.md`. |

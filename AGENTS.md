@@ -67,7 +67,7 @@ for the duration, or the jobs may land on them instead.
 
 Subject `<area>: <summary>` in lower case (`runner:`, `ci:`, `docs:`,
 `renovate:`, `editor:`), with the body saying why. Add `[skip ci]` only when
-the change cannot affect what `.github/workflows/lint.yml` checks: the
+the change cannot affect what `.github/workflows/ci.yml` checks: the
 scripts, the config template and the workflows. Before pushing, run the same
 shellcheck and yamllint commands that workflow runs.
 

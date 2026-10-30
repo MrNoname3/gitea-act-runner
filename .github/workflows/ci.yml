@@ -1,12 +1,11 @@
-name: lint
+name: CI
 
 # Runs on both GitHub Actions and Gitea Actions. Gitea also scans
 # .github/workflows, and this job uses no actions/cache and no github-only
 # guard, so it runs cleanly on either platform (see README "Compatibility").
 on:
   push:
-    branches: ['**']
-  pull_request:
+    branches: ['**']        # every branch, Renovate's included: main's protection requires the `check` status
   workflow_dispatch:
 
 # Least privilege: these jobs only read the repository. Without this block the
@@ -15,7 +14,7 @@ permissions:
   contents: read
 
 jobs:
-  lint:
+  check:
     runs-on: ubuntu-latest
     timeout-minutes: 10   # a hung step (e.g. a stalled apt/download) fails fast instead of idling
     steps:
