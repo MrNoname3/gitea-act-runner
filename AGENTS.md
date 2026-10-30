@@ -63,6 +63,14 @@ caps, and the run's duration with the jobs' `timeout-minutes`.
 To measure one machine while other runners share its label, stop the others
 for the duration, or the jobs may land on them instead.
 
+## Working files go in work/
+
+An agent's own temp directory may not be on the host's filesystem, so a path
+reported from there is one the user cannot open. Test harnesses, measurement
+results and captured logs go in `work/`: the directory is committed, its
+contents are gitignored, and everything in it can be deleted at any time.
+Secrets stay out of it: it is plain, unencrypted, inside a published repository.
+
 ## Commits
 
 Subject `<area>: <summary>` in lower case (`runner:`, `ci:`, `docs:`,
