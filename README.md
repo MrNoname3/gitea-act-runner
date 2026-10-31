@@ -252,7 +252,10 @@ runner, gate the cache step to github.com
 
 ## Compatibility (this repo's own CI)
 
-`.github/workflows/ci.yml` (shellcheck + yamllint) is written to run on **both**
+`.github/workflows/ci.yml` runs `scripts/check.sh` (shellcheck, yamllint and a
+secret scan, with the linters pinned in `requirements.txt` and installed into a
+gitignored `.venv/`), so running that script locally gives the CI result. It is
+written to run on **both**
 GitHub Actions and Gitea Actions: `runs-on: ubuntu-latest`, no github-only guard,
 and no `actions/cache`, so it also runs on older runners (see the section
 above). This mirrors how an app repo can be hosted on Gitea and push-mirrored
@@ -269,8 +272,9 @@ to GitHub while CI runs on either side.
 | `gitea-runner.container` | ✅ | Quadlet template (path is a placeholder). |
 | `gitea-runner.network` | ✅ | Quadlet for the network the runner and its jobs share. |
 | `runner.env.example` | ✅ | Template for `runner.env`. |
-| `scripts/*.sh` | ✅ | setup / uninstall / cleanup / status / logs / wait-for-gitea (`--help` on the first three). |
+| `scripts/*.sh` | ✅ | setup / uninstall / cleanup / status / logs / wait-for-gitea (`--help` on the first three); `check.sh` is the lint gate CI runs, `ensure-venv.sh` its toolchain. |
 | `.github/workflows/ci.yml`, `.yamllint` | ✅ | Lint CI + its config. |
+| `requirements.txt` | ✅ | Pinned linters (shellcheck-py, yamllint) for `scripts/check.sh`; Renovate bumps them. |
 | `renovate.json` | ✅ | Renovate config. No custom manager needed: Renovate's built-in `quadlet` manager reads the pinned `gitea/runner` image straight from `gitea-runner.container`. |
 | `LICENSE`, `SECURITY.md` | ✅ | MIT license; who can run code on the runner, and secret handling. |
 | `AGENTS.md`, `CLAUDE.md` | ✅ | Notes for coding agents; `CLAUDE.md` only imports `AGENTS.md`. |

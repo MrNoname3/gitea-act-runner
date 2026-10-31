@@ -3,6 +3,9 @@ name: CI
 # Runs on both GitHub Actions and Gitea Actions. Gitea also scans
 # .github/workflows, and this job uses no actions/cache and no github-only
 # guard, so it runs cleanly on either platform (see README "Compatibility").
+#
+# The job just calls the release gate — the same script developers run locally
+# (./scripts/check.sh) — so local green means CI green, by construction.
 on:
   push:
     branches: ['**']        # every branch, Renovate's included: main's protection requires the `check` status
@@ -16,35 +19,9 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 10   # a hung step (e.g. a stalled apt/download) fails fast instead of idling
+    timeout-minutes: 10   # a hung step (e.g. a stalled pip download) fails fast instead of idling
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Install linters
-        # Portable whether the runner runs as root (Gitea/act) or as a sudo-capable
-        # user (GitHub-hosted). shellcheck and yamllint are in the Ubuntu repos.
-        run: |
-          if [ "$(id -u)" -ne 0 ]; then SUDO=sudo; else SUDO=""; fi
-          $SUDO apt-get update -qq
-          $SUDO apt-get install -y --no-install-recommends shellcheck yamllint
-
-      - name: shellcheck (scripts)
-        run: shellcheck scripts/*.sh
-
-      - name: yamllint (config + workflows)
-        # config.yaml is generated (gitignored); lint the committed template.
-        run: yamllint config.yaml.template .github/workflows/
-
-      - name: yamllint (rendered config)
-        # The step above only lints the placeholder form. Also render the template
-        # the way setup.sh does and lint the OUTPUT, so a template edit that yields
-        # invalid YAML after substitution is caught. Cover both the with-limits and
-        # the no-limits (options: "") cases.
-        run: |
-          for opts in "--memory=4g --cpus=3" ""; do
-            sed -e 's#__CI_RUNNER_CAPACITY__#2#g' \
-                -e "s#__CI_CONTAINER_OPTIONS__#${opts}#g" \
-                config.yaml.template > config.rendered.yaml
-            yamllint config.rendered.yaml
-          done
-          rm -f config.rendered.yaml
+      - name: Run the release gate (same script as local runs)
+        run: ./scripts/check.sh

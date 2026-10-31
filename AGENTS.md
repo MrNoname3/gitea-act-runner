@@ -74,10 +74,10 @@ Secrets stay out of it: it is plain, unencrypted, inside a published repository.
 ## Commits
 
 Subject `<area>: <summary>` in lower case (`runner:`, `ci:`, `docs:`,
-`renovate:`, `editor:`), with the body saying why. Add `[skip ci]` only when
-the change cannot affect what `.github/workflows/ci.yml` checks: the
-scripts, the config template and the workflows. Before pushing, run the same
-shellcheck and yamllint commands that workflow runs.
+`renovate:`, `editor:`), with the body saying why. No `[skip ci]`: the secret
+scan in `scripts/check.sh` reads every tracked file, so any change can fail it.
+Before pushing, run `scripts/check.sh`: it is exactly what
+`.github/workflows/ci.yml` runs.
 
 ## English
 

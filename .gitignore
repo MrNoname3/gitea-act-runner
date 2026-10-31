@@ -24,3 +24,8 @@ runner.env
 # so anything the user has to see or delete lands here instead.
 /work/*
 !/work/.gitkeep
+
+# Repo-local lint toolchain (scripts/ensure-venv.sh) and the private patterns
+# scripts/check.sh's secret scan adds — never commit the latter.
+/.venv/
+/.secret-patterns.local

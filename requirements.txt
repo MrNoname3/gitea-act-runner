@@ -1,0 +1,5 @@
+# Lint toolchain for this repo — installed into the repo-local .venv by
+# scripts/ensure-venv.sh (nothing is installed system-wide). Renovate bumps
+# these pins, and CI proves the bump before it merges.
+shellcheck-py==0.11.0.1
+yamllint==1.38.0
