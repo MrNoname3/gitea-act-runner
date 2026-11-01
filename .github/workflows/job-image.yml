@@ -44,7 +44,9 @@ jobs:
             --label "org.opencontainers.image.source=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
             -t "$image:26.04" -t "$image:26.04-$GITHUB_RUN_NUMBER" .
           # Every runner's next job pulls :26.04, so it has to run what a job needs.
-          ctr=$(buildah --storage-driver vfs from "$image:26.04")
+          # --pull=never: some buildah versions pull by default when the registry's
+          # :26.04 differs, which would replace this build with the published one.
+          ctr=$(buildah --storage-driver vfs from --pull=never "$image:26.04")
           buildah --storage-driver vfs run --isolation chroot "$ctr" -- sh -euc '
             node --version; git --version; lsb_release -rs; zstd --version
             python3 -m venv /tmp/venv && /tmp/venv/bin/python --version'
