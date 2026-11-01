@@ -9,7 +9,8 @@
 #   - renders the quadlet with this repo's absolute path and installs it, with
 #     the network quadlet, into ~/.config/containers/systemd/
 #   - daemon-reload + (re)start, then reports status
-#   - removes the runner images of earlier versions
+#   - removes the runner images of earlier versions, and catthehacker's
+#     act-latest once CI_JOB_IMAGE names another image
 #
 set -euo pipefail
 
@@ -52,6 +53,8 @@ ENV_FILE="$REPO_DIR/runner.env"
 DATA_DIR="$REPO_DIR/data"
 CONFIG_TEMPLATE="$REPO_DIR/config.yaml.template"
 CONFIG_DST="$REPO_DIR/config.yaml"
+# The ubuntu-latest image when runner.env names none.
+DEFAULT_JOB_IMAGE="ghcr.io/catthehacker/ubuntu:act-latest"
 
 # Read a KEY=VALUE from runner.env (first match), stripped of surrounding
 # whitespace/quotes. Empty if unset. Mirrors the token-extraction style below.
@@ -103,15 +106,20 @@ fi
 run systemctl --user enable --now podman.socket \
   || warn "Could not enable podman.socket — check: systemctl --user status podman.socket"
 
-# 7) Render config.yaml from the template + per-machine resource limits ------
+# 7) Render config.yaml from the template + per-machine settings ------------
 CAP="$(read_env CI_RUNNER_CAPACITY)"; CAP="${CAP:-1}"
 MEM="$(read_env CI_JOB_MEMORY)"
 CPUS="$(read_env CI_JOB_CPUS)"
+JOB_IMAGE="$(read_env CI_JOB_IMAGE)"; JOB_IMAGE="${JOB_IMAGE:-$DEFAULT_JOB_IMAGE}"
 
 case "$CAP" in
   ''|*[!0-9]*) die "CI_RUNNER_CAPACITY must be a positive integer, got: '$CAP'" ;;
 esac
 [ "$CAP" -ge 1 ] || die "CI_RUNNER_CAPACITY must be >= 1, got: '$CAP'"
+# An image reference, no scheme: it goes after docker:// in a quoted YAML string.
+case "$JOB_IMAGE" in
+  *://*|*[!A-Za-z0-9._:/@-]*) die "CI_JOB_IMAGE must be an image reference like host/owner/name:tag, got: '$JOB_IMAGE'" ;;
+esac
 
 # Empty value => omit that flag (no limit for that dimension).
 OPTS=""
@@ -134,12 +142,13 @@ if [ -n "$CPUS" ]; then
   fi
 fi
 
-say "Rendering config.yaml (capacity=$CAP, options='${OPTS:-none}')"
+say "Rendering config.yaml (capacity=$CAP, options='${OPTS:-none}', job image=$JOB_IMAGE)"
 if [ "$DRY" -eq 1 ]; then
   printf '\033[1;36m[dry-run]\033[0m render %s -> %s\n' "$CONFIG_TEMPLATE" "$CONFIG_DST"
 else
   sed -e "s#__CI_RUNNER_CAPACITY__#${CAP}#g" \
       -e "s#__CI_CONTAINER_OPTIONS__#${OPTS}#g" \
+      -e "s#__CI_JOB_IMAGE__#${JOB_IMAGE}#g" \
       "$CONFIG_TEMPLATE" > "$CONFIG_DST"
 fi
 
@@ -181,6 +190,14 @@ for ref in $(podman images --format '{{.Repository}}:{{.Tag}}' \
   say "Removing old runner image $ref"
   podman rmi "$ref" >/dev/null || warn "Could not remove $ref."
 done
+
+# 12) Remove act-latest once ubuntu-latest runs another image --------------
+# By name: an image the ubuntu-24.04 label's act-24.04 tag still names is only
+# untagged, not removed.
+if [ "$JOB_IMAGE" != "$DEFAULT_JOB_IMAGE" ] && podman image exists "$DEFAULT_JOB_IMAGE"; then
+  say "Removing $DEFAULT_JOB_IMAGE, which ubuntu-latest no longer runs"
+  podman rmi "$DEFAULT_JOB_IMAGE" >/dev/null || warn "Could not remove $DEFAULT_JOB_IMAGE."
+fi
 
 echo
 say "Recent runner log:"

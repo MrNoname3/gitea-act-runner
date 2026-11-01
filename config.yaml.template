@@ -12,9 +12,12 @@ runner:
   timeout: 3h
   labels:
     # label -> image. The label (left of the first colon) MUST match the
-    # workflow's `runs-on:`. The image MUST be a full environment (gcc,
-    # python, etc.), NOT a slim node image, or native builds fail.
-    - "ubuntu-latest:docker://ghcr.io/catthehacker/ubuntu:act-latest"
+    # workflow's `runs-on:`. ubuntu-latest's image is CI_JOB_IMAGE in
+    # runner.env, rendered by scripts/setup.sh; every image has to bring node,
+    # which runs the JavaScript actions inside the job container.
+    - "ubuntu-latest:docker://__CI_JOB_IMAGE__"
+    # For a job that needs Ubuntu 24.04 itself, under GitHub's own label for it.
+    - "ubuntu-24.04:docker://ghcr.io/catthehacker/ubuntu:act-24.04"
 
 cache:
   enabled: true
@@ -30,8 +33,9 @@ container:
   # runner's cache server only on a network the runner container is also on.
   network: "gitea-runner"
   privileged: false
-  # Re-pull the job image before every job, so the moving `act-latest` tag
-  # stays current. The runner's own default is false.
+  # Re-pull the job image before every job, so a moved tag (the job image's
+  # :26.04, catthehacker's act-latest) reaches the next job by itself. The
+  # runner's own default is false.
   force_pull: true
   # Per-job resource limits (memory / CPU) rendered from runner.env. Empty
   # string = no limit. These flags are passed to `podman create` for every job

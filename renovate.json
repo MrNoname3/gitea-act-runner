@@ -29,6 +29,16 @@
       ],
       "automerge": true,
       "minimumReleaseAge": "3 days"
+    },
+    {
+      "description": "The job image's base images update together on the first of the month: each update rebuilds the image",
+      "matchFileNames": [
+        "job-image.Containerfile"
+      ],
+      "groupName": "job image",
+      "schedule": [
+        "* * 1 * *"
+      ]
     }
   ]
 }

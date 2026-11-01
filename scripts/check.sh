@@ -40,6 +40,7 @@ trap 'rm -f "$rendered"' EXIT
 for opts in "--memory=4g --cpus=3" ""; do
   sed -e 's#__CI_RUNNER_CAPACITY__#2#g' \
       -e "s#__CI_CONTAINER_OPTIONS__#${opts}#g" \
+      -e 's#__CI_JOB_IMAGE__#ghcr.io/owner/act-ubuntu:26.04#g' \
       config.yaml.template > "$rendered"
   "$VENV/bin/yamllint" -c .yamllint "$rendered"
 done

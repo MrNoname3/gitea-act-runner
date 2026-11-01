@@ -29,9 +29,12 @@ machine is back and the runner reconnects.
 | `gitea-runner.network` | Quadlet unit for the `gitea-runner` network, which the runner and its jobs share. |
 | systemd user service + lingering | Auto-start on boot, restart on failure, no login needed. |
 
-Jobs run in a **full** environment image (`catthehacker/ubuntu:act-latest`),
-which has gcc, python, etc. — required for native compilation, `setup-python`,
-and similar. A slim `node:*` image is **not** enough.
+Jobs labelled `ubuntu-latest` run in the image `CI_JOB_IMAGE` in `runner.env`
+names: by default catthehacker's full-size `ubuntu:act-latest`, or the small
+Ubuntu 26.04 image `job-image.Containerfile` describes (see
+[The job image](#the-job-image-ci_job_image)). Either brings node, which the
+runner needs inside the job container to run JavaScript actions, so a plain
+`ubuntu` or a slim `node:*` image is **not** enough.
 
 ---
 
@@ -91,15 +94,16 @@ the quadlet mounts it read-only. Edit the **template** (portable, committed) or
 runner:
   capacity: 1              # from CI_RUNNER_CAPACITY (rendered)
   labels:
-    - "ubuntu-latest:docker://ghcr.io/catthehacker/ubuntu:act-latest"
+    - "ubuntu-latest:docker://ghcr.io/catthehacker/ubuntu:act-latest"   # from CI_JOB_IMAGE (rendered)
+    - "ubuntu-24.04:docker://ghcr.io/catthehacker/ubuntu:act-24.04"
 container:
   options: "--memory=2g --cpus=1.5"   # from CI_JOB_MEMORY / CI_JOB_CPUS (rendered)
   docker_host: "-"
 ```
 
-- **`labels`** — the label left of the first colon (`ubuntu-latest`) **must match
-  the workflow's `runs-on:`**. The image right of `docker://` **must be a full
-  environment**, not a slim node image.
+- **`labels`** — the label left of the first colon (`ubuntu-latest`,
+  `ubuntu-24.04`) **must match the workflow's `runs-on:`**. The image right of `docker://` is `CI_JOB_IMAGE`,
+  and it must bring node (see [The job image](#the-job-image-ci_job_image)).
 - **`docker_host: "-"`** — auto-detect the container host but do **not** bind-mount
   the socket into job containers. Without it, rootless Podman tries to create the
   socket mountpoint on the host and every job fails with *permission denied*.
@@ -164,6 +168,57 @@ watched a real run or two.
 > jobs still run. As a safety net, `setup.sh` prints a warning when `CI_JOB_CPUS` is
 > set but the `cpu` controller isn't delegated, so this doesn't fail silently.
 
+### The job image (`CI_JOB_IMAGE`)
+
+`CI_JOB_IMAGE` in `runner.env` names the image `ubuntu-latest` runs; empty or
+unset, it is `ghcr.io/catthehacker/ubuntu:act-latest` (about 1.7 GB). The
+alternative is `job-image.Containerfile`: Ubuntu 26.04, as GitHub's own
+`ubuntu-latest` is, with node, git, curl, jq, `lsb_release`, python3 (3.14) with
+`venv`, sudo, unzip, xz and zstd (about 0.4 GB). That covers `actions/checkout`,
+`actions/cache`, `setup-python` (which has builds of Python 3.10 and later for
+26.04) and a workflow that installs the rest itself with `apt-get`; a native
+build that expects gcc preinstalled does not get it. A workflow that needs much
+more can build its own image `FROM` this one, by digest: the runners then hold
+the layers they share once.
+
+`.github/workflows/job-image.yml` builds it on the GitHub mirror, whose job
+token can push to ghcr.io and whose runners do the work. A branch only builds
+it; `main` also pushes it as `ghcr.io/<owner>/act-ubuntu:26.04`, and as
+`:26.04-<run number>` for going back to. It runs when the recipe changes, and
+on the 2nd of every month for Ubuntu's package updates; Renovate updates the
+recipe's base images on the 1st. Before it pushes, the build runs node, git,
+`lsb_release`, zstd and a Python venv in the new image.
+
+The runner pulls job images without logging in, so the package has to be
+public. GitHub creates it private whatever the repository's visibility: after
+the first push, make it public once in the package's settings.
+
+To switch a machine over, once `main` has pushed the image:
+
+```bash
+# runner.env
+CI_JOB_IMAGE=ghcr.io/owner/act-ubuntu:26.04
+```
+
+then `./scripts/setup.sh` (it restarts the runner, so wait for running jobs to
+finish), which also removes catthehacker's `act-latest`.
+
+A job that needs Ubuntu 24.04 itself, rather than a recent Ubuntu, says so with
+`runs-on: ubuntu-24.04`: GitHub's label for its 24.04 runners, which this
+runner serves with catthehacker's `act-24.04`. That image is pulled only on a
+machine that runs such a job. With `force_pull`, every
+job re-pulls `:26.04`, so a new push reaches the next job by itself. To go back,
+point `CI_JOB_IMAGE` at an older `:26.04-<run number>`, or empty it for
+catthehacker's.
+
+An image carrying the label `gitea-act-runner.job-image=true` is kept to its
+newest copy: `scripts/cleanup.sh` removes the older untagged images of the same
+repository. A tagged one stays, so an older `:26.04-<run number>` gone back to
+is kept until you remove it with `podman rmi`. The job image carries the label,
+and an image a workflow builds `FROM` it inherits it: such an image is pulled by
+digest, so a run never leaves it tagged, and without the label its old copies
+would pile up.
+
 ---
 
 ## Operating it
@@ -179,10 +234,12 @@ git pull && ./scripts/setup.sh   # apply a runner-version bump (Renovate PR) + r
 ```
 
 The **job** image is re-pulled before every job (`force_pull: true` in the
-template), so it follows the `act-latest` tag by itself. To refresh it by hand:
+template), so it follows its tag (`:26.04`, or catthehacker's `act-latest`) by
+itself. To refresh it by hand, pull the image the rendered `config.yaml` gives
+`ubuntu-latest`:
 
 ```bash
-podman pull ghcr.io/catthehacker/ubuntu:act-latest
+podman pull "$(sed -n 's#.*"ubuntu-latest:docker://\(.*\)"#\1#p' config.yaml)"
 ```
 
 ---
@@ -204,8 +261,10 @@ a container, and while one holds the volumes, its idle cleanup
 (`runner.idle_cleanup_interval`) logs a warning on every pass instead of
 removing them. `scripts/cleanup.sh` does, and the service runs it before every
 start: it removes the `GITEA-ACTIONS-TASK-*` containers that are not running,
-the job volumes no container holds, and the untagged copies of the job image
-that `force_pull` leaves after the `act-latest` tag moves. A suspend stops
+the job volumes no container holds, the untagged copies of catthehacker's image
+that `force_pull` leaves after the `act-latest` tag moves, and the older
+untagged copies of every image labelled `gitea-act-runner.job-image=true` (see
+[The job image](#the-job-image-ci_job_image)). A suspend stops
 nothing: after resume the same runner still holds the job and tears it down
 when it ends.
 
@@ -218,7 +277,7 @@ no new jobs; they wait on the server or go to another runner.
 
 The runner is useless unless the workflow can actually match it:
 
-1. The job's `runs-on:` must equal the runner **label** (`ubuntu-latest`).
+1. The job's `runs-on:` must equal a runner **label** (`ubuntu-latest`, `ubuntu-24.04`).
 2. Any guard that restricts jobs to github.com (e.g.
    `if: ${{ github.server_url == 'https://github.com' }}`) must be removed or
    inverted, otherwise the jobs **skip** on Gitea.
@@ -272,14 +331,16 @@ to GitHub while CI runs on either side.
 | `gitea-runner.container` | ✅ | Quadlet template (path is a placeholder). |
 | `gitea-runner.network` | ✅ | Quadlet for the network the runner and its jobs share. |
 | `runner.env.example` | ✅ | Template for `runner.env`. |
+| `job-image.Containerfile` | ✅ | The small `ubuntu-latest` job image; `.github/workflows/job-image.yml` builds and pushes it. |
 | `scripts/*.sh` | ✅ | setup / uninstall / cleanup / status / logs / wait-for-gitea (`--help` on the first three); `check.sh` is the lint gate CI runs, `ensure-venv.sh` its toolchain. |
 | `.github/workflows/ci.yml`, `.yamllint` | ✅ | Lint CI + its config. |
+| `.github/workflows/job-image.yml` | ✅ | Builds the job image on the GitHub mirror and pushes it from `main` to ghcr.io. |
 | `requirements.txt` | ✅ | Pinned linters (shellcheck-py, yamllint) for `scripts/check.sh`; Renovate bumps them. |
-| `renovate.json` | ✅ | Renovate config. No custom manager needed: Renovate's built-in `quadlet` manager reads the pinned `gitea/runner` image straight from `gitea-runner.container`. |
+| `renovate.json` | ✅ | Renovate config. No custom manager needed: Renovate's built-in `quadlet` manager reads the pinned `gitea/runner` image straight from `gitea-runner.container`, and its `dockerfile` manager the job image's bases from `job-image.Containerfile`. |
 | `LICENSE`, `SECURITY.md` | ✅ | MIT license; who can run code on the runner, and secret handling. |
 | `AGENTS.md`, `CLAUDE.md` | ✅ | Notes for coding agents; `CLAUDE.md` only imports `AGENTS.md`. |
 | `gitea-act-runner.code-workspace` | ✅ | Portable VS Code workspace — open it after cloning. |
-| `runner.env` | ❌ gitignored | **Registration token — secret.** Also holds the per-machine `CI_*` resource limits. |
+| `runner.env` | ❌ gitignored | **Registration token — secret.** Also holds the per-machine `CI_*` resource limits and job image. |
 | `data/.runner` | ❌ gitignored | **Runner identity — secret.** |
 
 ---

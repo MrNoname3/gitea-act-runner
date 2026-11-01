@@ -2,7 +2,7 @@
 #
 # Remove what interrupted jobs leave behind: job containers that are not
 # running, the job volumes no container holds, and job images a re-pull has
-# untagged.
+# untagged or a newer image has replaced.
 #
 # The quadlet runs this before every start of the runner. The runner tears down
 # only the jobs it sees end, and its idle cleanup cannot remove a volume a
@@ -16,8 +16,10 @@ usage() {
 Usage: scripts/cleanup.sh [--dry-run] [-h|--help]
 
 Remove the containers and volumes of jobs that were cut off (a shutdown, a
-crash) and the untagged copies of the job image. Refuses while the runner is
-running; the service runs it by itself before every start.
+crash), the untagged copies of catthehacker's job image, and the untagged
+copies of every job image that carries the gitea-act-runner.job-image label but
+the newest of its repository. Refuses while the runner is running; the service
+runs it by itself before every start.
 
 Options:
   --dry-run   List what would be removed, without removing it.
@@ -36,8 +38,11 @@ while [ "$#" -gt 0 ]; do
 done
 
 PREFIX="GITEA-ACTIONS-TASK-"   # the runner's name prefix for job containers and volumes
-# The vendor label of the job image in config.yaml.template.
-JOB_IMAGE_LABEL="org.opencontainers.image.vendor=catthehacker"
+# The vendor label of catthehacker's job image, setup.sh's default.
+CATTHEHACKER_LABEL="org.opencontainers.image.vendor=catthehacker"
+# The label of job-image.Containerfile's image, and of any image a workflow
+# builds for its own jobs that wants the same treatment.
+JOB_IMAGE_LABEL="gitea-act-runner.job-image=true"
 
 say()  { printf '\033[1;32m==>\033[0m %s\n' "$*"; }
 die()  { printf '\033[1;31mERROR:\033[0m %s\n' "$*" >&2; exit 1; }
@@ -71,9 +76,28 @@ for name in $volumes; do
   remove "job volume $name" podman volume rm "$name"
 done
 
-images="$(podman images --filter dangling=true --filter "label=$JOB_IMAGE_LABEL" --format '{{.ID}}')"
+images="$(podman images --filter dangling=true --filter "label=$CATTHEHACKER_LABEL" --format '{{.ID}}')"
 for id in $images; do
   remove "untagged job image $id" podman rmi "$id"
 done
+
+# Labelled job images: of each repository the newest stays, and so does every
+# tagged one; the older untagged copies go. They are told apart by the
+# repository of their registry digest, which an image keeps after its tag moves
+# on and which is all a workflow's image pulled by digest has. Creation times
+# print in UTC, so they sort as text.
+kept=" "
+while read -r _ _ _ _ id tags digest; do
+  repository="${digest%@*}"
+  [ -n "$repository" ] || continue          # no registry digest: nothing to group it by
+  case "$kept" in
+    *" $repository "*)
+      [ "$tags" -eq 0 ] || continue
+      remove "replaced job image $repository ($id)" podman rmi "$id" || say "Kept $id: podman could not remove it" ;;
+    *) kept="$kept$repository " ;;
+  esac
+done < <(for id in $(podman images --filter "label=$JOB_IMAGE_LABEL" --format '{{.ID}}' | sort -u); do
+           podman image inspect --format '{{.Created}} {{.Id}} {{len .RepoTags}} {{index .RepoDigests 0}}' "$id" 2>/dev/null || true
+         done | sort -r)
 
 say "Done."
