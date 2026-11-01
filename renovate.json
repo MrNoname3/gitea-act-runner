@@ -39,6 +39,16 @@
       "schedule": [
         "* * 1 * *"
       ]
+    },
+    {
+      "description": "The job image's node stays on the major line GitHub runs JavaScript actions with (their runs.using); raise it when GitHub moves on",
+      "matchFileNames": [
+        "job-image.Containerfile"
+      ],
+      "matchDepNames": [
+        "docker.io/library/node"
+      ],
+      "allowedVersions": "<25"
     }
   ]
 }
