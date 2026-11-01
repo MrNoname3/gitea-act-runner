@@ -13,6 +13,9 @@ FROM docker.io/library/ubuntu:26.04@sha256:6a06111c3b0a8600feadb270aec771dc239bf
 # scripts/cleanup.sh keeps the newest image carrying this label and removes the
 # older untagged ones once no container uses them.
 LABEL gitea-act-runner.job-image="true"
+# Otherwise the base image's title and description show for this one.
+LABEL org.opencontainers.image.title="act-ubuntu" \
+      org.opencontainers.image.description="Job image for Gitea Actions runners: Ubuntu 26.04 with node for JavaScript actions"
 # upgrade: a rebuild also brings the base image's own packages up to date, not
 # only the ones installed here.
 RUN apt-get update \
