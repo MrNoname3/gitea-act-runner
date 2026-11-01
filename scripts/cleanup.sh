@@ -74,14 +74,15 @@ for name in $volumes; do
 done
 
 # Labelled job images: of each repository the newest stays, and so does every
-# tagged one; the older untagged copies go. They are told apart by the
-# repository of their registry digest, which an image keeps after its tag moves
-# on and which is all a workflow's image pulled by digest has. Creation times
-# print in UTC, so they sort as text.
+# tagged one; the older untagged copies go. The repository comes from the
+# image's latest name, repo:tag or repo@digest, which NamesHistory keeps after
+# the tag moves on (RepoDigests does not). Creation times print in UTC, so they
+# sort as text.
 kept=" "
-while read -r _ _ _ _ id tags digest; do
-  repository="${digest%@*}"
-  [ -n "$repository" ] || continue          # no registry digest: nothing to group it by
+while read -r _ _ _ _ id tags name; do
+  repository="${name%@*}"
+  case "${repository##*/}" in *:*) repository="${repository%:*}" ;; esac
+  [ -n "$repository" ] || continue          # no name: nothing to group it by
   case "$kept" in
     *" $repository "*)
       [ "$tags" -eq 0 ] || continue
@@ -89,7 +90,7 @@ while read -r _ _ _ _ id tags digest; do
     *) kept="$kept$repository " ;;
   esac
 done < <(for id in $(podman images --filter "label=$JOB_IMAGE_LABEL" --format '{{.ID}}' | sort -u); do
-           podman image inspect --format '{{.Created}} {{.Id}} {{len .RepoTags}} {{index .RepoDigests 0}}' "$id" 2>/dev/null || true
+           podman image inspect --format '{{.Created}} {{.Id}} {{len .RepoTags}} {{index .NamesHistory 0}}' "$id" 2>/dev/null || true
          done | sort -r)
 
 say "Done."
