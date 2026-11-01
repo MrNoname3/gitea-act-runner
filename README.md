@@ -190,8 +190,8 @@ recipe's base images on the 1st. Before it pushes, the build runs node, git,
 `lsb_release`, zstd and a Python venv in the new image.
 
 The runner pulls job images without logging in, so the package has to be
-public. GitHub creates it private whatever the repository's visibility: after
-the first push, make it public once in the package's settings.
+public: check its visibility on the package's page after the first push, or
+pull the tag with `podman pull` on a machine that is not logged in to ghcr.io.
 
 To switch a machine over, once `main` has pushed the image:
 
