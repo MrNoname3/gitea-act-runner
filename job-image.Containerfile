@@ -7,9 +7,9 @@
 # more in an image of its own builds it FROM this one, so the runners keep the
 # layers below once. .github/workflows/job-image.yml builds and pushes it.
 
-FROM docker.io/library/node:24.21.0-trixie-slim@sha256:173f125896c3b47ddf056734c7ea789d04595a6a08769a8f78e0df642781fb66 AS node
+FROM docker.io/library/node:24.22.2-trixie-slim@sha256:54f84b4cf8432b21aaffd5d3ce8d41e12cea0d10d33c09d2f3c9879d49d6b446 AS node
 
-FROM docker.io/library/ubuntu:26.04@sha256:c098726dd9b9733f3e885f8de0ef375206a311b0a317eadc40d347b1115fb944
+FROM docker.io/library/ubuntu:26.04@sha256:6a06111c3b0a8600feadb270aec771dc239bf407b25625f93f44ab00e11f4d3c
 # scripts/cleanup.sh keeps the newest image carrying this label and removes the
 # older untagged ones once no container uses them.
 LABEL gitea-act-runner.job-image="true"
