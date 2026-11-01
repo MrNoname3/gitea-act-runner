@@ -55,9 +55,9 @@ CONFIG_TEMPLATE="$REPO_DIR/config.yaml.template"
 CONFIG_DST="$REPO_DIR/config.yaml"
 
 # Read a KEY=VALUE from runner.env (first match), stripped of surrounding
-# whitespace/quotes. Empty if unset. Mirrors the token-extraction style below.
+# whitespace/quotes. Empty if unset: grep finding nothing must not trip pipefail.
 read_env() {
-  grep -E "^$1=" "$ENV_FILE" 2>/dev/null | head -1 | cut -d= -f2- \
+  { grep -E "^$1=" "$ENV_FILE" 2>/dev/null || true; } | head -1 | cut -d= -f2- \
     | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'\$/\1/"
 }
 
