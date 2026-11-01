@@ -192,8 +192,6 @@ for ref in $(podman images --format '{{.Repository}}:{{.Tag}}' \
 done
 
 # 12) Remove act-latest once ubuntu-latest runs another image --------------
-# By name: an image the ubuntu-24.04 label's act-24.04 tag still names is only
-# untagged, not removed.
 if [ "$JOB_IMAGE" != "$DEFAULT_JOB_IMAGE" ] && podman image exists "$DEFAULT_JOB_IMAGE"; then
   say "Removing $DEFAULT_JOB_IMAGE, which ubuntu-latest no longer runs"
   podman rmi "$DEFAULT_JOB_IMAGE" >/dev/null || warn "Could not remove $DEFAULT_JOB_IMAGE."

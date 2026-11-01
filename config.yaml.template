@@ -16,8 +16,6 @@ runner:
     # runner.env, rendered by scripts/setup.sh; every image has to bring node,
     # which runs the JavaScript actions inside the job container.
     - "ubuntu-latest:docker://__CI_JOB_IMAGE__"
-    # For a job that needs Ubuntu 24.04 itself, under GitHub's own label for it.
-    - "ubuntu-24.04:docker://ghcr.io/catthehacker/ubuntu:act-24.04"
 
 cache:
   enabled: true

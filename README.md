@@ -95,14 +95,13 @@ runner:
   capacity: 1              # from CI_RUNNER_CAPACITY (rendered)
   labels:
     - "ubuntu-latest:docker://ghcr.io/catthehacker/ubuntu:act-latest"   # from CI_JOB_IMAGE (rendered)
-    - "ubuntu-24.04:docker://ghcr.io/catthehacker/ubuntu:act-24.04"
 container:
   options: "--memory=2g --cpus=1.5"   # from CI_JOB_MEMORY / CI_JOB_CPUS (rendered)
   docker_host: "-"
 ```
 
-- **`labels`** — the label left of the first colon (`ubuntu-latest`,
-  `ubuntu-24.04`) **must match the workflow's `runs-on:`**. The image right of `docker://` is `CI_JOB_IMAGE`,
+- **`labels`** — the label left of the first colon (`ubuntu-latest`) **must match
+  the workflow's `runs-on:`**. The image right of `docker://` is `CI_JOB_IMAGE`,
   and it must bring node (see [The job image](#the-job-image-ci_job_image)).
 - **`docker_host: "-"`** — auto-detect the container host but do **not** bind-mount
   the socket into job containers. Without it, rootless Podman tries to create the
@@ -203,13 +202,9 @@ CI_JOB_IMAGE=ghcr.io/owner/act-ubuntu:26.04
 then `./scripts/setup.sh` (it restarts the runner, so wait for running jobs to
 finish), which also removes catthehacker's `act-latest`.
 
-A job that needs Ubuntu 24.04 itself, rather than a recent Ubuntu, says so with
-`runs-on: ubuntu-24.04`: GitHub's label for its 24.04 runners, which this
-runner serves with catthehacker's `act-24.04`. That image is pulled only on a
-machine that runs such a job. With `force_pull`, every
-job re-pulls `:26.04`, so a new push reaches the next job by itself. To go back,
-point `CI_JOB_IMAGE` at an older `:26.04-<run number>`, or empty it for
-catthehacker's.
+With `force_pull`, every job re-pulls `:26.04`, so a new push reaches the next
+job by itself. To go back, point `CI_JOB_IMAGE` at an older
+`:26.04-<run number>`, or empty it for catthehacker's.
 
 An image carrying the label `gitea-act-runner.job-image=true` is kept to its
 newest copy: `scripts/cleanup.sh` removes the older untagged images of the same
@@ -277,7 +272,7 @@ no new jobs; they wait on the server or go to another runner.
 
 The runner is useless unless the workflow can actually match it:
 
-1. The job's `runs-on:` must equal a runner **label** (`ubuntu-latest`, `ubuntu-24.04`).
+1. The job's `runs-on:` must equal the runner **label** (`ubuntu-latest`).
 2. Any guard that restricts jobs to github.com (e.g.
    `if: ${{ github.server_url == 'https://github.com' }}`) must be removed or
    inverted, otherwise the jobs **skip** on Gitea.
