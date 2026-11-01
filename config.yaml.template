@@ -32,8 +32,7 @@ container:
   network: "gitea-runner"
   privileged: false
   # Re-pull the job image before every job, so a moved tag (the job image's
-  # :26.04, catthehacker's act-latest) reaches the next job by itself. The
-  # runner's own default is false.
+  # :26.04) reaches the next job by itself. The runner's own default is false.
   force_pull: true
   # Per-job resource limits (memory / CPU) rendered from runner.env. Empty
   # string = no limit. These flags are passed to `podman create` for every job

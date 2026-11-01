@@ -22,7 +22,7 @@ machine is back and the runner reconnects.
 |-------|------|
 | `gitea/runner` container | Registers with the server, polls for jobs, launches a job container per job. |
 | `config.yaml.template` → `config.yaml` | Runner config. The template is committed; `setup.sh` renders the (gitignored) `config.yaml` from it, filling in the label→image mapping and the **per-machine resource limits**. |
-| `runner.env` | Registration inputs (instance URL, token, name) **and per-machine resource limits**. **Secret — gitignored.** |
+| `runner.env` | Registration inputs (instance URL, token, name), the job image **and per-machine resource limits**. **Secret — gitignored.** |
 | `data/.runner` | Registration state written after first start. **Secret — gitignored.** |
 | `gitea-runner-cache` volume | The actions cache (`actions/cache`), kept across restarts. |
 | `gitea-runner.container` | Quadlet unit template; `scripts/setup.sh` installs it. |
@@ -30,11 +30,10 @@ machine is back and the runner reconnects.
 | systemd user service + lingering | Auto-start on boot, restart on failure, no login needed. |
 
 Jobs labelled `ubuntu-latest` run in the image `CI_JOB_IMAGE` in `runner.env`
-names: by default catthehacker's full-size `ubuntu:act-latest`, or the small
-Ubuntu 26.04 image `job-image.Containerfile` describes (see
-[The job image](#the-job-image-ci_job_image)). Either brings node, which the
-runner needs inside the job container to run JavaScript actions, so a plain
-`ubuntu` or a slim `node:*` image is **not** enough.
+names: the small Ubuntu 26.04 image `job-image.Containerfile` describes (see
+[The job image](#the-job-image-ci_job_image)). It brings node, which the runner
+needs inside the job container to run JavaScript actions, so a plain `ubuntu`
+or a slim `node:*` image is **not** enough.
 
 ---
 
@@ -55,7 +54,7 @@ cd gitea-act-runner
 
 # 1. Provide the registration token and instance settings.
 cp runner.env.example runner.env
-${EDITOR:-nano} runner.env      # paste GITEA_RUNNER_REGISTRATION_TOKEN, set the name + URL
+${EDITOR:-nano} runner.env      # paste GITEA_RUNNER_REGISTRATION_TOKEN, set the name, URL + CI_JOB_IMAGE
 
 # 2. Install + start (idempotent — safe to re-run; add --dry-run to preview).
 ./scripts/setup.sh
@@ -94,7 +93,7 @@ the quadlet mounts it read-only. Edit the **template** (portable, committed) or
 runner:
   capacity: 1              # from CI_RUNNER_CAPACITY (rendered)
   labels:
-    - "ubuntu-latest:docker://ghcr.io/catthehacker/ubuntu:act-latest"   # from CI_JOB_IMAGE (rendered)
+    - "ubuntu-latest:docker://ghcr.io/owner/act-ubuntu:26.04"   # from CI_JOB_IMAGE (rendered)
 container:
   options: "--memory=2g --cpus=1.5"   # from CI_JOB_MEMORY / CI_JOB_CPUS (rendered)
   docker_host: "-"
@@ -169,9 +168,9 @@ watched a real run or two.
 
 ### The job image (`CI_JOB_IMAGE`)
 
-`CI_JOB_IMAGE` in `runner.env` names the image `ubuntu-latest` runs; empty or
-unset, it is `ghcr.io/catthehacker/ubuntu:act-latest` (about 1.7 GB). The
-alternative is `job-image.Containerfile`: Ubuntu 26.04, as GitHub's own
+`CI_JOB_IMAGE` in `runner.env` names the image `ubuntu-latest` runs, and
+`setup.sh` refuses to run without it. The image is the one
+`job-image.Containerfile` describes: Ubuntu 26.04, as GitHub's own
 `ubuntu-latest` is, with node, git, curl, jq, `lsb_release`, python3 (3.14) with
 `venv`, sudo, unzip, xz and zstd (about 0.4 GB). That covers `actions/checkout`,
 `actions/cache`, `setup-python` (which has builds of Python 3.10 and later for
@@ -192,7 +191,7 @@ The runner pulls job images without logging in, so the package has to be
 public: check its visibility on the package's page after the first push, or
 pull the tag with `podman pull` on a machine that is not logged in to ghcr.io.
 
-To switch a machine over, once `main` has pushed the image:
+Set it on every machine, once `main` has pushed the image:
 
 ```bash
 # runner.env
@@ -200,11 +199,12 @@ CI_JOB_IMAGE=ghcr.io/owner/act-ubuntu:26.04
 ```
 
 then `./scripts/setup.sh` (it restarts the runner, so wait for running jobs to
-finish), which also removes catthehacker's `act-latest`.
+finish). When the value changes, `setup.sh` also removes the image
+`ubuntu-latest` ran before.
 
 With `force_pull`, every job re-pulls `:26.04`, so a new push reaches the next
 job by itself. To go back, point `CI_JOB_IMAGE` at an older
-`:26.04-<run number>`, or empty it for catthehacker's.
+`:26.04-<run number>`.
 
 An image carrying the label `gitea-act-runner.job-image=true` is kept to its
 newest copy: `scripts/cleanup.sh` removes the older untagged images of the same
@@ -229,9 +229,8 @@ git pull && ./scripts/setup.sh   # apply a runner-version bump (Renovate PR) + r
 ```
 
 The **job** image is re-pulled before every job (`force_pull: true` in the
-template), so it follows its tag (`:26.04`, or catthehacker's `act-latest`) by
-itself. To refresh it by hand, pull the image the rendered `config.yaml` gives
-`ubuntu-latest`:
+template), so it follows its tag (`:26.04`) by itself. To refresh it by hand,
+pull the image the rendered `config.yaml` gives `ubuntu-latest`:
 
 ```bash
 podman pull "$(sed -n 's#.*"ubuntu-latest:docker://\(.*\)"#\1#p' config.yaml)"
@@ -256,12 +255,11 @@ a container, and while one holds the volumes, its idle cleanup
 (`runner.idle_cleanup_interval`) logs a warning on every pass instead of
 removing them. `scripts/cleanup.sh` does, and the service runs it before every
 start: it removes the `GITEA-ACTIONS-TASK-*` containers that are not running,
-the job volumes no container holds, the untagged copies of catthehacker's image
-that `force_pull` leaves after the `act-latest` tag moves, and the older
-untagged copies of every image labelled `gitea-act-runner.job-image=true` (see
-[The job image](#the-job-image-ci_job_image)). A suspend stops
-nothing: after resume the same runner still holds the job and tears it down
-when it ends.
+the job volumes no container holds, and the older untagged copies of every
+image labelled `gitea-act-runner.job-image=true`, which `force_pull` leaves
+after a tag moves (see [The job image](#the-job-image-ci_job_image)). A suspend
+stops nothing: after resume the same runner still holds the job and tears it
+down when it ends.
 
 While less than `health_check.min_free_disk_space_mb` is free, the runner takes
 no new jobs; they wait on the server or go to another runner.

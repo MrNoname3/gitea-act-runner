@@ -9,8 +9,8 @@
 #   - renders the quadlet with this repo's absolute path and installs it, with
 #     the network quadlet, into ~/.config/containers/systemd/
 #   - daemon-reload + (re)start, then reports status
-#   - removes the runner images of earlier versions, and catthehacker's
-#     act-latest once CI_JOB_IMAGE names another image
+#   - removes the runner images of earlier versions, and the job image
+#     ubuntu-latest ran before CI_JOB_IMAGE changed
 #
 set -euo pipefail
 
@@ -20,7 +20,7 @@ Usage: scripts/setup.sh [--dry-run] [-h|--help]
 
 Install and start the Gitea Actions runner as a rootless podman container
 managed by a systemd user quadlet. Reads runner.env (copy it from
-runner.env.example and fill in the registration token first).
+runner.env.example and fill in the registration token and CI_JOB_IMAGE first).
 
 Options:
   --dry-run   Show what would be done, without changing anything.
@@ -53,8 +53,6 @@ ENV_FILE="$REPO_DIR/runner.env"
 DATA_DIR="$REPO_DIR/data"
 CONFIG_TEMPLATE="$REPO_DIR/config.yaml.template"
 CONFIG_DST="$REPO_DIR/config.yaml"
-# The ubuntu-latest image when runner.env names none.
-DEFAULT_JOB_IMAGE="ghcr.io/catthehacker/ubuntu:act-latest"
 
 # Read a KEY=VALUE from runner.env (first match), stripped of surrounding
 # whitespace/quotes. Empty if unset. Mirrors the token-extraction style below.
@@ -110,7 +108,9 @@ run systemctl --user enable --now podman.socket \
 CAP="$(read_env CI_RUNNER_CAPACITY)"; CAP="${CAP:-1}"
 MEM="$(read_env CI_JOB_MEMORY)"
 CPUS="$(read_env CI_JOB_CPUS)"
-JOB_IMAGE="$(read_env CI_JOB_IMAGE)"; JOB_IMAGE="${JOB_IMAGE:-$DEFAULT_JOB_IMAGE}"
+JOB_IMAGE="$(read_env CI_JOB_IMAGE)"
+# The image the current config.yaml runs, removed below once JOB_IMAGE replaces it.
+OLD_JOB_IMAGE="$(sed -n 's#.*"ubuntu-latest:docker://\(.*\)"#\1#p' "$CONFIG_DST" 2>/dev/null || true)"
 
 case "$CAP" in
   ''|*[!0-9]*) die "CI_RUNNER_CAPACITY must be a positive integer, got: '$CAP'" ;;
@@ -118,6 +118,7 @@ esac
 [ "$CAP" -ge 1 ] || die "CI_RUNNER_CAPACITY must be >= 1, got: '$CAP'"
 # An image reference, no scheme: it goes after docker:// in a quoted YAML string.
 case "$JOB_IMAGE" in
+  '') die "Set CI_JOB_IMAGE in runner.env to the image ubuntu-latest runs (see runner.env.example)." ;;
   *://*|*[!A-Za-z0-9._:/@-]*) die "CI_JOB_IMAGE must be an image reference like host/owner/name:tag, got: '$JOB_IMAGE'" ;;
 esac
 
@@ -191,10 +192,10 @@ for ref in $(podman images --format '{{.Repository}}:{{.Tag}}' \
   podman rmi "$ref" >/dev/null || warn "Could not remove $ref."
 done
 
-# 12) Remove act-latest once ubuntu-latest runs another image --------------
-if [ "$JOB_IMAGE" != "$DEFAULT_JOB_IMAGE" ] && podman image exists "$DEFAULT_JOB_IMAGE"; then
-  say "Removing $DEFAULT_JOB_IMAGE, which ubuntu-latest no longer runs"
-  podman rmi "$DEFAULT_JOB_IMAGE" >/dev/null || warn "Could not remove $DEFAULT_JOB_IMAGE."
+# 12) Remove the job image ubuntu-latest ran before -------------------------
+if [ -n "$OLD_JOB_IMAGE" ] && [ "$OLD_JOB_IMAGE" != "$JOB_IMAGE" ] && podman image exists "$OLD_JOB_IMAGE"; then
+  say "Removing $OLD_JOB_IMAGE, which ubuntu-latest no longer runs"
+  podman rmi "$OLD_JOB_IMAGE" >/dev/null || warn "Could not remove $OLD_JOB_IMAGE."
 fi
 
 echo

@@ -16,10 +16,9 @@ usage() {
 Usage: scripts/cleanup.sh [--dry-run] [-h|--help]
 
 Remove the containers and volumes of jobs that were cut off (a shutdown, a
-crash), the untagged copies of catthehacker's job image, and the untagged
-copies of every job image that carries the gitea-act-runner.job-image label but
-the newest of its repository. Refuses while the runner is running; the service
-runs it by itself before every start.
+crash), and the untagged copies of every job image that carries the
+gitea-act-runner.job-image label but the newest of its repository. Refuses
+while the runner is running; the service runs it by itself before every start.
 
 Options:
   --dry-run   List what would be removed, without removing it.
@@ -38,8 +37,6 @@ while [ "$#" -gt 0 ]; do
 done
 
 PREFIX="GITEA-ACTIONS-TASK-"   # the runner's name prefix for job containers and volumes
-# The vendor label of catthehacker's job image, setup.sh's default.
-CATTHEHACKER_LABEL="org.opencontainers.image.vendor=catthehacker"
 # The label of job-image.Containerfile's image, and of any image a workflow
 # builds for its own jobs that wants the same treatment.
 JOB_IMAGE_LABEL="gitea-act-runner.job-image=true"
@@ -74,11 +71,6 @@ else
 fi
 for name in $volumes; do
   remove "job volume $name" podman volume rm "$name"
-done
-
-images="$(podman images --filter dangling=true --filter "label=$CATTHEHACKER_LABEL" --format '{{.ID}}')"
-for id in $images; do
-  remove "untagged job image $id" podman rmi "$id"
 done
 
 # Labelled job images: of each repository the newest stays, and so does every
