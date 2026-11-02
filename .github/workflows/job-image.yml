@@ -16,7 +16,9 @@ on:
       - job-image.Containerfile
       - .github/workflows/job-image.yml
   schedule:
-    - cron: '0 4 2 * *'     # the 2nd, after Renovate's monthly digest update on the 1st
+    # The 2nd, after Renovate's monthly digest update on the 1st; off the full
+    # hour, where GitHub delays or drops scheduled runs under load.
+    - cron: '17 4 2 * *'
   workflow_dispatch:
 
 permissions:
