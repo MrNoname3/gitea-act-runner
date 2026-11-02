@@ -81,6 +81,8 @@ command -v systemctl >/dev/null 2>&1 || die "'systemctl' not found (user systemd
 
 # 3) Data dir (holds the .runner registration state) -------------------------
 run mkdir -p "$DATA_DIR"
+# The runner writes .runner world-readable; the directory keeps other users out.
+run chmod 700 "$DATA_DIR"
 
 # 4) Token check — only required for the FIRST registration ------------------
 if [ ! -f "$DATA_DIR/.runner" ]; then
