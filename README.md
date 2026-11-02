@@ -173,9 +173,12 @@ watched a real run or two.
 `job-image.Containerfile` describes: Ubuntu 26.04, as GitHub's own
 `ubuntu-latest` is, with node, git, curl, jq, `lsb_release`, python3 (3.14) with
 `venv`, sudo, unzip, xz and zstd (about 0.4 GB). That covers `actions/checkout`,
-`actions/cache`, `setup-python` (which has builds of Python 3.10 and later for
-26.04) and a workflow that installs the rest itself with `apt-get`; a native
-build that expects gcc preinstalled does not get it. A workflow that needs much
+`actions/cache` and a workflow that installs the rest itself with `apt-get`; a
+native build that expects gcc preinstalled does not get it. For Python, use the
+image's `python3`, with pip inside a venv (the system Python refuses `pip
+install`): `setup-python`'s builds for 26.04 need a CPU with AVX2 (x86-64-v3),
+and on a runner without it they stop at their first start (see
+[Troubleshooting](#troubleshooting)). A workflow that needs much
 more can build its own image `FROM` this one, by digest: the runners then hold
 the layers they share once.
 
@@ -377,6 +380,13 @@ to GitHub while CI runs on either side.
   without spaces or commas; a name with an expression gets no matrix suffix,
   e.g. `name: test-${{ matrix.python-version }}`. Restart the runner to bring
   aardvark-dns back.
+- **`setup-python` fails right after the download: `./python: CPU ISA level is
+  lower than required`** → the runner's CPU has no AVX2. The Python builds
+  `setup-python` downloads for Ubuntu 26.04 are compiled for x86-64-v3 (`readelf
+  -n` shows `x86 ISA needed: … x86-64-v3`);
+  `/lib64/ld-linux-x86-64.so.2 --help` lists the levels the CPU supports. Only jobs that land on such a runner fail, so the same workflow
+  can pass on the next run. Drop `setup-python` and use the job image's
+  `python3` with a venv (see [The job image](#the-job-image-ci_job_image)).
 - **Runner not online** → `./scripts/logs.sh`; check the URL is reachable
   (`curl -sf $GITEA_INSTANCE_URL/api/v1/version`) and the token was valid.
 - **Commands not found from inside a sandboxed shell** (e.g. a Flatpak'd editor
