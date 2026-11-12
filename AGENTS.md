@@ -83,3 +83,11 @@ Before pushing, run `scripts/check.sh`: it is exactly what
 
 Everything here is written in English, comments included, whatever language
 the conversation is held in.
+
+## Files the template manages
+
+`scripts/lib/gate.sh`, `scripts/ensure-venv.sh`, `.github/workflows/ci.yml`
+and the other files that say "Managed by repo-template" are overwritten by the
+template's next update. Change them in repo-template; this repository's own
+checks go into `scripts/check.sh`, its own secret-scan exceptions into
+`.secret-allow`.

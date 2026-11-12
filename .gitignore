@@ -1,4 +1,10 @@
-# --- Secrets — must NEVER be committed ---
+# Secrets — never commit these, encrypted or not.
+*.key
+*.keyfile
+*.pem
+id_rsa*
+id_ed25519*
+*.kdbx
 
 # Registration token + instance settings. Copy runner.env.example -> runner.env.
 runner.env
@@ -9,23 +15,25 @@ runner.env
 /data/*
 !/data/.gitkeep
 
-# --- Machine-specific, generated — not secret but not portable ---
-
 # Rendered by scripts/setup.sh from config.yaml.template + the CI_* resource
 # limits in runner.env. Per-machine (RAM/CPU/capacity differ), so it is not
 # committed. Edit config.yaml.template or runner.env, then re-run setup.sh.
 /config.yaml
 
-# --- Local / tooling junk ---
+# Local tooling junk.
 .claude/
 *.log
 
+# Repo-local toolchain, built by scripts/ensure-venv.sh.
+.venv/
+
+# Python bytecode: it records the absolute path of its source, a home directory included.
+__pycache__/
+
+# Private secret-scan patterns for scripts/check.sh — never commit.
+.secret-patterns.local
+
 # Working files: an agent's own temp directory is not on the host's filesystem,
 # so anything the user has to see or delete lands here instead.
-/work/*
-!/work/.gitkeep
-
-# Repo-local lint toolchain (scripts/ensure-venv.sh) and the private patterns
-# scripts/check.sh's secret scan adds — never commit the latter.
-/.venv/
-/.secret-patterns.local
+work/*
+!work/.gitkeep

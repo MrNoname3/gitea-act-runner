@@ -1,6 +1,6 @@
 # EditorConfig: editor-agnostic enforcement of the project's whitespace rules,
 # applied in VS Code by the recommended EditorConfig extension. Mirrors the
-# indentation used across this repo (shell, YAML, JSON are all 2-space).
+# indentation used across this repo (shell, YAML and JSON are all 2-space).
 # https://editorconfig.org
 root = true
 
