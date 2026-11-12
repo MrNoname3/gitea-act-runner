@@ -1,4 +1,4 @@
-_commit: v0.1.5
+_commit: v0.1.7
 _src_path: https://forge.invalid/MrNoname3/repo-template.git
 ansible: false
 ci_timeout: 10
@@ -7,6 +7,8 @@ description: 'Self-hosted Gitea Actions runner (gitea/runner) on rootless Podman
     managed by a systemd quadlet. Clone, add a registration token, run one script:
     reboot-safe, works behind NAT, per-machine job capacity and resource limits.'
 python_pin: false
+python_project: false
 repo_name: gitea-act-runner
 scan_identifiers: true
+shared_gate: true
 visibility: public
