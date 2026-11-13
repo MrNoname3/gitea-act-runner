@@ -10,13 +10,14 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-PYTHON="${PYTHON:-python3}"
 VENV=.venv
+PYTHON="${PYTHON:-python3}"
 
-# venv needs ensurepip; on Debian, Ubuntu and Mint that is the python3-venv package.
+# venv needs ensurepip; on Debian, Ubuntu and Mint that is the <python>-venv
+# package, python3-venv or python3.15-venv for example.
 "$PYTHON" -c 'import ensurepip' 2>/dev/null || {
   echo "ERROR: $PYTHON cannot create a venv (no ensurepip)." >&2
-  echo "On Debian, Ubuntu or Mint: sudo apt install python3-venv" >&2
+  echo "On Debian, Ubuntu or Mint: sudo apt install $(basename "$PYTHON")-venv" >&2
   exit 1
 }
 
