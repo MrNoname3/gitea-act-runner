@@ -3,9 +3,11 @@
 # Node runs the JavaScript actions, which the runner executes with the job
 # container's node; setup-python reads the release with lsb_release and installs
 # into the tool cache; actions/cache compresses with zstd. Anything else a
-# workflow needs it installs itself with apt-get, as root. A workflow that wants
-# more in an image of its own builds it FROM this one, so the runners keep the
-# layers below once. .github/workflows/job-image.yml builds and pushes it.
+# workflow needs it installs itself with apt-get, as root. python3.15 comes from
+# the deadsnakes PPA (deadsnakes.sources), next to Ubuntu's python3, which
+# Ubuntu's own tools need. A workflow that wants more in an image of its own
+# builds it FROM this one, so the runners keep the layers below once.
+# .github/workflows/job-image.yml builds and pushes it.
 
 FROM docker.io/library/node:24.22.2-trixie-slim@sha256:54f84b4cf8432b21aaffd5d3ce8d41e12cea0d10d33c09d2f3c9879d49d6b446 AS node
 
@@ -15,13 +17,19 @@ FROM docker.io/library/ubuntu:26.04@sha256:6a06111c3b0a8600feadb270aec771dc239bf
 LABEL gitea-act-runner.job-image="true"
 # Otherwise the base image's title and description show for this one.
 LABEL org.opencontainers.image.title="act-ubuntu" \
-      org.opencontainers.image.description="Job image for Gitea Actions runners: Ubuntu 26.04 with node for JavaScript actions"
+      org.opencontainers.image.description="Job image for Gitea Actions runners: Ubuntu 26.04 with node for JavaScript actions and Python 3.15"
+COPY deadsnakes.sources /etc/apt/deadsnakes.sources
+# The PPA is served over https, so it goes live once ca-certificates is in.
 # upgrade: a rebuild also brings the base image's own packages up to date, not
 # only the ones installed here.
 RUN apt-get update \
+ && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ca-certificates \
+ && mv /etc/apt/deadsnakes.sources /etc/apt/sources.list.d/ \
+ && apt-get update \
  && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y \
  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-      ca-certificates curl git jq lsb-release python3 python3-venv sudo unzip xz-utils zstd \
+      ca-certificates curl git jq lsb-release python3 python3-venv python3.15 python3.15-venv \
+      sudo unzip xz-utils zstd \
  && rm -rf /var/lib/apt/lists/* \
  && mkdir -p /opt/hostedtoolcache
 COPY --from=node /usr/local/bin/node /usr/local/bin/node

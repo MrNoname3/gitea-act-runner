@@ -171,12 +171,14 @@ watched a real run or two.
 `CI_JOB_IMAGE` in `runner.env` names the image `ubuntu-latest` runs, and
 `setup.sh` refuses to run without it. The image is the one
 `job-image.Containerfile` describes: Ubuntu 26.04, as GitHub's own
-`ubuntu-latest` is, with node, git, curl, jq, `lsb_release`, python3 (3.14) with
-`venv`, sudo, unzip, xz and zstd (about 0.4 GB). That covers `actions/checkout`,
-`actions/cache` and a workflow that installs the rest itself with `apt-get`; a
-native build that expects gcc preinstalled does not get it. For Python, use the
-image's `python3`, with pip inside a venv (the system Python refuses `pip
-install`): `setup-python`'s builds for 26.04 need a CPU with AVX2 (x86-64-v3),
+`ubuntu-latest` is, with node, git, curl, jq, `lsb_release`, Ubuntu's python3
+(3.14) and `python3.15` from the [deadsnakes PPA](https://launchpad.net/~deadsnakes/+archive/ubuntu/ppa),
+both with `venv`, sudo, unzip, xz and zstd (about 0.4 GB). That covers
+`actions/checkout`, `actions/cache` and a workflow that installs the rest itself
+with `apt-get`; a native build that expects gcc preinstalled does not get it.
+For Python, use the image's `python3` or `python3.15`, with pip inside a venv
+(the system Python refuses `pip install`): `setup-python`'s builds for 26.04 need
+a CPU with AVX2 (x86-64-v3),
 and on a runner without it they stop at their first start (see
 [Troubleshooting](#troubleshooting)). A workflow that needs much
 more can build its own image `FROM` this one, by digest: the runners then hold
@@ -188,7 +190,7 @@ it; `main` also pushes it as `ghcr.io/<owner>/act-ubuntu:26.04`, and as
 `:26.04-<run number>` for going back to. It runs when the recipe changes, and
 on the 2nd of every month for Ubuntu's package updates; Renovate updates the
 recipe's base images on the 1st. Before it pushes, the build runs node, git,
-`lsb_release`, zstd and a Python venv in the new image.
+`lsb_release`, zstd and a venv of each Python in the new image.
 
 The runner pulls job images without logging in, so the package has to be
 public: check its visibility on the package's page after the first push, or

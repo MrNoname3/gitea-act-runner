@@ -14,6 +14,7 @@ on:
     branches: ['**']
     paths:
       - job-image.Containerfile
+      - deadsnakes.sources
       - .github/workflows/job-image.yml
   schedule:
     # The 2nd, after Renovate's monthly digest update on the 1st; off the full
@@ -53,7 +54,8 @@ jobs:
           ctr=$(buildah --storage-driver vfs from --pull=never "$image:26.04")
           buildah --storage-driver vfs run --isolation chroot "$ctr" -- sh -euc '
             node --version; git --version; lsb_release -rs; zstd --version
-            python3 -m venv /tmp/venv && /tmp/venv/bin/python --version'
+            python3 -m venv /tmp/venv && /tmp/venv/bin/python --version
+            python3.15 -m venv /tmp/venv315 && /tmp/venv315/bin/python --version'
           buildah --storage-driver vfs rm "$ctr"
           if [ "$GITHUB_REF" != refs/heads/main ]; then
             echo "Built $image; only main pushes it."
