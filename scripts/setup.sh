@@ -128,6 +128,10 @@ esac
 OPTS=""
 [ -n "$MEM" ]  && OPTS="$OPTS --memory=$MEM"
 [ -n "$CPUS" ] && OPTS="$OPTS --cpus=$CPUS"
+# A job's exec processes take its container's OOM score. Through the Docker API
+# Podman sets 0, below the floor systemd gives the user manager's services, and
+# crun 1.31+ then refuses every exec; 200 is the score those services run at.
+OPTS="$OPTS --oom-score-adj=200"
 OPTS="${OPTS# }"  # trim the single leading space
 
 # Preflight: if a CPU cap is requested, warn when the cgroup v2 'cpu' controller

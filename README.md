@@ -365,6 +365,13 @@ to GitHub while CI runs on either side.
   issue](https://github.com/podman-container-tools/podman/issues/29805) for
   the current fix status; the known-working combination is
   `podman 5.8.4` / `buildah 1.43.2`.
+- **Every job fails at the first `uses:` step with exit code 126, log shows
+  `crun: write to /proc/self/oom_score_adj: Permission denied`** → crun 1.31+
+  with a `config.yaml` rendered before `setup.sh` passed `--oom-score-adj`.
+  crun now applies an exec's OOM score, and the 0 Podman gives containers made
+  through the Docker API is below what the user manager's `podman.service` may
+  set ([crun#2466](https://github.com/containers/crun/issues/2466)). Re-run
+  `./scripts/setup.sh`.
 - **`actions/cache` never saves: "Unable to reserve cache … another job may be
   creating this cache", and every restore "Cache not found"** → the job cannot
   reach the runner's cache server. Check that `container.network` in `config.yaml` names the
